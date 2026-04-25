@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RUNCAR - Arquitectura Serverless</title>
+    <title>RUNCAR - Plataforma de Transporte</title>
     <style>
         :root {
             --primary: #1a1a1a;
-            --accent: #facc15; /* Amarillo estilo Taxi/Uber */
+            --accent: #facc15; 
             --bg: #f3f4f6;
             --white: #ffffff;
         }
@@ -18,13 +18,13 @@
         header h1 { color: var(--primary); letter-spacing: -1px; font-size: 2.5rem; }
         header span { color: #666; font-weight: 300; }
 
+        /* Estilos de la Arquitectura Visual */
         .architecture-flow {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 20px;
             margin-bottom: 40px;
         }
-
         .module {
             background: var(--white);
             border-radius: 12px;
@@ -41,7 +41,6 @@
             align-items: center;
             justify-content: space-between;
         }
-
         .field-group { padding: 20px; }
         .field {
             display: flex;
@@ -126,6 +125,30 @@
         </div>
     </div>
 </div>
+
+<script type="module">
+  // Importar las funciones necesarias
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-app.js";
+  import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
+  import { getStorage } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-storage.js";
+
+  // Configuración de tu App
+  const firebaseConfig = {
+    apiKey: "AIzaSyAyRrBUmw4OEzS7EmvK_XmDk6Z5rrjLC3A",
+    authDomain: "runcar-6eda0.firebaseapp.com",
+    projectId: "runcar-6eda0",
+    storageBucket: "runcar-6eda0.firebasestorage.app",
+    messagingSenderId: "152627344672",
+    appId: "1:152627344672:web:b420d1c8cbb670069b9345"
+  };
+
+  // Inicializar Firebase
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const storage = getStorage(app);
+
+  console.log("RUNCAR: Firebase conectado con éxito");
+</script>
 
 </body>
 </html>
