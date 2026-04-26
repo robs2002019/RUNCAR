@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RUNCAR - Registro Oficial</title>
+    <title>RUNCAR - Registro Internacional</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/css/intlTelInput.css"/>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/js/intlTelInput.min.js"></script>
+    
     <style>
         :root {
             --primary: #1a1a1a;
@@ -12,9 +15,9 @@
             --white: #ffffff;
         }
         body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); margin: 0; padding: 20px; }
-        .container { max-width: 800px; margin: auto; }
-        header { text-align: center; padding-bottom: 30px; }
-        header h1 { color: var(--primary); letter-spacing: -1px; font-size: 2.5rem; }
+        .container { max-width: 600px; margin: auto; }
+        header { text-align: center; padding-bottom: 20px; }
+        header h1 { color: var(--primary); margin-bottom: 5px; }
         
         .module {
             background: var(--white);
@@ -33,7 +36,7 @@
         }
         .field-group { padding: 20px; }
         
-        label { display: block; margin-top: 10px; font-weight: bold; color: #374151; font-size: 0.9rem; }
+        label { display: block; margin-top: 15px; font-weight: bold; color: #374151; font-size: 0.85rem; }
         input {
             width: 100%;
             padding: 12px;
@@ -42,7 +45,16 @@
             border-radius: 8px;
             box-sizing: border-box;
         }
-        .file-input { background: #f9fafb; border: 1px dashed #cbd5e1; padding: 10px; }
+        /* Estilo para el input de teléfono internacional */
+        .iti { width: 100%; margin: 8px 0; }
+        
+        .file-box {
+            background: #fffbeb;
+            border: 1px dashed #facc15;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 5px;
+        }
         
         button {
             background: var(--accent);
@@ -54,11 +66,11 @@
             border-radius: 8px;
             cursor: pointer;
             font-size: 1rem;
-            margin-top: 15px;
+            margin-top: 20px;
             transition: 0.3s;
         }
-        button:hover { background: #eab308; transform: translateY(-2px); }
-        .driver-accent { border-top: 5px solid var(--accent); }
+        button:hover { background: #eab308; }
+        .driver-card { border-top: 6px solid var(--accent); }
     </style>
 </head>
 <body>
@@ -66,47 +78,49 @@
 <div class="container">
     <header>
         <h1>RUN<span style="color:var(--accent)">CAR</span></h1>
-        <span>Plataforma de Transporte Internacional</span>
+        <p>Registro Global de Usuarios</p>
     </header>
 
     <div class="module">
-        <div class="module-header">REGISTRO DE CLIENTES (ID: 01)</div>
-        <div class="field-group" id="form-cliente">
+        <div class="module-header">REGISTRO DE CLIENTE</div>
+        <div class="field-group">
+            <label>Foto de Perfil:</label>
+            <input type="file" id="c_foto" accept="image/*" class="file-box">
+
             <label>Nombre Completo:</label>
             <input type="text" id="c_nombre" placeholder="Nombre y Apellido">
             
             <label>Correo Electrónico:</label>
-            <input type="email" id="c_correo" placeholder="correo@ejemplo.com">
+            <input type="email" id="c_correo" placeholder="ejemplo@correo.com">
             
-            <label>Número de Teléfono:</label>
-            <input type="tel" id="c_telefono" placeholder="Ej: +503 7777-7777">
+            <label>Teléfono Internacional:</label>
+            <input type="tel" id="c_telefono">
             
-            <button onclick="registrar('cliente')">REGISTRARSE COMO CLIENTE</button>
+            <button id="btn-cliente" onclick="procesarRegistro('cliente')">CREAR CUENTA DE CLIENTE</button>
         </div>
     </div>
 
-    <div class="module driver-accent">
-        <div class="module-header">REGISTRO DE DRIVERS (ID: 02)</div>
-        <div class="field-group" id="form-driver">
-            <label>Nombre del Conductor:</label>
+    <div class="module driver-card">
+        <div class="module-header">REGISTRO DE CONDUCTOR (DRIVER)</div>
+        <div class="field-group">
+            <label>Foto de Perfil:</label>
+            <input type="file" id="d_foto" accept="image/*" class="file-box">
+
+            <label>Nombre Completo:</label>
             <input type="text" id="d_nombre" placeholder="Nombre completo">
             
-            <label>Email de Trabajo:</label>
-            <input type="email" id="d_correo" placeholder="conductor@runcar.com">
-            
             <label>Teléfono de Contacto:</label>
-            <input type="tel" id="d_telefono" placeholder="Número activo">
+            <input type="tel" id="d_telefono">
 
-            <div style="background: #fff8e1; padding: 10px; border-radius: 8px; margin-top: 15px;">
-                <p style="margin: 0; font-size: 0.8rem; font-weight: bold;">DOCUMENTACIÓN (Fotos/PDF):</p>
+            <div class="file-box" style="margin-top: 20px;">
+                <p style="margin:0 0 10px 0; font-size: 0.8rem; color: #854d0e;"><b>DOCUMENTOS REQUERIDOS:</b></p>
                 <label>Licencia de Conducir:</label>
-                <input type="file" id="d_licencia" class="file-input">
-                
+                <input type="file" id="d_licencia">
                 <label>Antecedentes Penales:</label>
-                <input type="file" id="d_antecedentes" class="file-input">
+                <input type="file" id="d_antecedentes">
             </div>
             
-            <button onclick="registrar('driver')">ENVIAR SOLICITUD DE DRIVER</button>
+            <button id="btn-driver" onclick="procesarRegistro('driver')">ENVIAR SOLICITUD PARA CONDUCIR</button>
         </div>
     </div>
 </div>
@@ -114,6 +128,7 @@
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-app.js";
     import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
+    import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-storage.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyAyRrBUmw4OEzS7EmvK_XmDk6Z5rrjLC3A",
@@ -126,45 +141,71 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
+    const storage = getStorage(app);
 
-    async function registrar(tipo) {
-        let datos = {};
+    // Inicializar selectores de países
+    const inputTelCliente = document.querySelector("#c_telefono");
+    const inputTelDriver = document.querySelector("#d_telefono");
+    
+    const itiCliente = window.intlTelInput(inputTelCliente, {
+        initialCountry: "auto",
+        geoIpLookup: callback => fetch('https://ipapi.co/json').then(res => res.json()).then(data => callback(data.country_code)),
+        utilsScript: "https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/js/utils.js"
+    });
+
+    const itiDriver = window.intlTelInput(inputTelDriver, {
+        initialCountry: "auto",
+        geoIpLookup: callback => fetch('https://ipapi.co/json').then(res => res.json()).then(data => callback(data.country_code)),
+        utilsScript: "https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/js/utils.js"
+    });
+
+    async function procesarRegistro(tipo) {
         const prefijo = tipo === 'cliente' ? 'c_' : 'd_';
+        const btn = document.getElementById(tipo === 'cliente' ? 'btn-cliente' : 'btn-driver');
         
         const nombre = document.getElementById(prefijo + 'nombre').value;
-        const correo = document.getElementById(prefijo + 'correo').value;
-        const telefono = document.getElementById(prefijo + 'telefono').value;
+        const telefono = tipo === 'cliente' ? itiCliente.getNumber() : itiDriver.getNumber();
+        const fotoArchivo = document.getElementById(prefijo + 'foto').files[0];
 
-        if(!nombre || !correo || !telefono) {
-            alert("Por favor completa los campos principales.");
+        if (!nombre || !telefono || !fotoArchivo) {
+            alert("Por favor, completa el nombre, teléfono y selecciona una foto de perfil.");
             return;
         }
 
-        datos = {
-            nombre: nombre,
-            email: correo,
-            telefono: telefono,
-            rol: tipo,
-            fechaRegistro: new Date(),
-            estado: tipo === 'driver' ? 'pendiente_revision' : 'activo'
-        };
+        btn.disabled = true;
+        btn.innerText = "Subiendo datos...";
 
         try {
-            // Esto creará automáticamente las colecciones "usuarios" en tu Firebase
-            const docRef = await addDoc(collection(db, "usuarios"), datos);
-            alert("¡Éxito! Registrado como " + tipo + ". ID: " + docRef.id);
+            // 1. Subir Foto de Perfil a Storage
+            const fotoRef = ref(storage, `perfiles/${tipo}_${Date.now()}_${fotoArchivo.name}`);
+            const uploadSnapshot = await uploadBytes(fotoRef, fotoArchivo);
+            const urlFoto = await getDownloadURL(uploadSnapshot.ref);
+
+            // 2. Preparar objeto de datos
+            let datosFinales = {
+                nombre: nombre,
+                telefono: telefono,
+                fotoPerfil: urlFoto,
+                rol: tipo,
+                fecha: new Date(),
+                pais: tipo === 'cliente' ? itiCliente.getSelectedCountryData().name : itiDriver.getSelectedCountryData().name
+            };
+
+            // 3. Guardar en Firestore
+            const docRef = await addDoc(collection(db, "usuarios"), datosFinales);
             
-            // Limpiar campos
-            document.getElementById(prefijo + 'nombre').value = "";
-            document.getElementById(prefijo + 'correo').value = "";
-            document.getElementById(prefijo + 'telefono').value = "";
-        } catch (e) {
-            console.error("Error: ", e);
-            alert("Error al conectar con Firebase. Revisa las reglas de seguridad.");
+            alert("¡Registro completado con éxito!");
+            location.reload(); // Recargar para limpiar
+
+        } catch (error) {
+            console.error(error);
+            alert("Error: " + error.message);
+            btn.disabled = false;
+            btn.innerText = "Reintentar registro";
         }
     }
 
-    window.registrar = registrar;
+    window.procesarRegistro = procesarRegistro;
 </script>
 
 </body>
