@@ -6,6 +6,7 @@
     <title>RUNCAR - Registro Internacional</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/css/intlTelInput.css"/>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/js/intlTelInput.min.js"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=TU_API_KEY&libraries=places,geometry"></script>
     
     <style>
         :root {
@@ -125,9 +126,31 @@
     </div>
 </div>
 
+<div class="module driver-card" id="modulo-viaje">
+    <div class="module-header">SOLICITAR VIAJE RUNCAR</div>
+    <div class="field-group">
+        <label>Punto A (Origen):</label>
+        <div style="display: flex; gap: 5px; margin-bottom: 10px;">
+            <button onclick="obtenerUbicacionActual()" style="font-size: 0.7rem; padding: 5px;">📍 Mi Ubicación</button>
+            <input type="text" id="origen-texto" placeholder="Buscar dirección o coordenadas (lat, lng)">
+        </div>
+
+        <label>Punto B (Destino):</label>
+        <input type="text" id="destino-texto" placeholder="Dirección de destino o coordenadas">
+
+        <div id="resultado-viaje" style="margin-top: 20px; padding: 15px; background: #f9fafb; border-radius: 8px; display: none; border-left: 5px solid var(--accent);">
+            <p>Distancia: <b id="distancia-km">0</b> km</p>
+            <p>Costo Estimado: <b id="costo-total" style="font-size: 1.5rem; color: #1a1a1a;">$0.00</b></p>
+            <button onclick="confirmarViaje()">CONFIRMAR Y BUSCAR CONDUCTOR</button>
+        </div>
+        
+        <button onclick="calcularRecorrido()">CALCULAR COSTO</button>
+    </div>
+</div>    
+
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-app.js";
-    import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
     import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-storage.js";
 
     const firebaseConfig = {
@@ -143,7 +166,7 @@
     const db = getFirestore(app);
     const storage = getStorage(app);
 
-    // Inicializar selectores de países
+    // --- LÓGICA DE REGISTRO ---
     const inputTelCliente = document.querySelector("#c_telefono");
     const inputTelDriver = document.querySelector("#d_telefono");
     
@@ -162,51 +185,153 @@
     async function procesarRegistro(tipo) {
         const prefijo = tipo === 'cliente' ? 'c_' : 'd_';
         const btn = document.getElementById(tipo === 'cliente' ? 'btn-cliente' : 'btn-driver');
-        
         const nombre = document.getElementById(prefijo + 'nombre').value;
         const telefono = tipo === 'cliente' ? itiCliente.getNumber() : itiDriver.getNumber();
         const fotoArchivo = document.getElementById(prefijo + 'foto').files[0];
 
         if (!nombre || !telefono || !fotoArchivo) {
-            alert("Por favor, completa el nombre, teléfono y selecciona una foto de perfil.");
-            return;
+            alert("Completa nombre, teléfono y foto."); return;
         }
 
-        btn.disabled = true;
-        btn.innerText = "Subiendo datos...";
+        btn.disabled = true; btn.innerText = "Procesando...";
 
         try {
-            // 1. Subir Foto de Perfil a Storage
-            const fotoRef = ref(storage, `perfiles/${tipo}_${Date.now()}_${fotoArchivo.name}`);
+            const fotoRef = ref(storage, `perfiles/${tipo}_${Date.now()}`);
             const uploadSnapshot = await uploadBytes(fotoRef, fotoArchivo);
             const urlFoto = await getDownloadURL(uploadSnapshot.ref);
 
-            // 2. Preparar objeto de datos
-            let datosFinales = {
-                nombre: nombre,
-                telefono: telefono,
-                fotoPerfil: urlFoto,
-                rol: tipo,
-                fecha: new Date(),
+            await addDoc(collection(db, "usuarios"), {
+                nombre, telefono, fotoPerfil: urlFoto, rol: tipo, fecha: new Date(),
                 pais: tipo === 'cliente' ? itiCliente.getSelectedCountryData().name : itiDriver.getSelectedCountryData().name
-            };
-
-            // 3. Guardar en Firestore
-            const docRef = await addDoc(collection(db, "usuarios"), datosFinales);
+            });
             
-            alert("¡Registro completado con éxito!");
-            location.reload(); // Recargar para limpiar
+            alert("¡Registro Exitoso!");
+            location.reload();
+        } catch (e) { alert("Error: " + e.message); btn.disabled = false; }
+    }
 
-        } catch (error) {
-            console.error(error);
-            alert("Error: " + error.message);
-            btn.disabled = false;
-            btn.innerText = "Reintentar registro";
+    // --- PANEL DE ADMINISTRACIÓN INVISIBLE ---
+    window.addEventListener('keydown', (e) => {
+        // Ahora se activa con la letra 'W'
+        if (e.key.toLowerCase() === 'w') { 
+            const pass = prompt("Acceso Restringido. Ingrese Clave:");
+            if (pass === "Cordia1987") { // Nueva Clave Actualizada
+                abrirPanelAdmin();
+            } else if (pass !== null) {
+                alert("Clave incorrecta.");
+            }
         }
+    });
+
+    async function abrirPanelAdmin() {
+        const querySnapshot = await getDocs(query(collection(db, "usuarios"), orderBy("fecha", "desc")));
+        
+        let htmlPanel = `
+            <div id="admin-modal" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(26,26,26,0.98); z-index:9999; overflow-y:auto; color:white; padding:20px; box-sizing:border-box; font-family: sans-serif;">
+                <div style="max-width: 1000px; margin: auto;">
+                    <button onclick="document.getElementById('admin-modal').remove()" style="background:#facc15; color:black; border:none; padding:10px 20px; font-weight:bold; cursor:pointer; float:right; border-radius:5px;">CERRAR PANEL</button>
+                    <h2 style="color:#facc15;">RUNCAR | Gestión de Usuarios</h2>
+                    <hr style="border: 0; border-top: 1px solid #444; margin: 20px 0;">
+                    <table style="width:100%; border-collapse:collapse; background:white; color:black; border-radius:8px; overflow:hidden;">
+                        <tr style="background:#facc15; color:black;">
+                            <th style="padding:15px; border:1px solid #ddd;">Foto</th>
+                            <th style="padding:15px; border:1px solid #ddd;">Nombre</th>
+                            <th style="padding:15px; border:1px solid #ddd;">Rol</th>
+                            <th style="padding:15px; border:1px solid #ddd;">País</th>
+                            <th style="padding:15px; border:1px solid #ddd;">Teléfono</th>
+                        </tr>
+        `;
+
+        querySnapshot.forEach((doc) => {
+            const u = doc.data();
+            htmlPanel += `
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding:10px; text-align:center; border:1px solid #ddd;">
+                        <img src="${u.fotoPerfil}" style="width:50px; height:50px; border-radius:50%; object-fit:cover; border: 2px solid #facc15;">
+                    </td>
+                    <td style="padding:10px; border:1px solid #ddd;"><b>${u.nombre}</b></td>
+                    <td style="padding:10px; border:1px solid #ddd;"><span style="background:#eee; padding:3px 8px; border-radius:4px; font-size:0.8rem;">${u.rol.toUpperCase()}</span></td>
+                    <td style="padding:10px; border:1px solid #ddd;">${u.pais}</td>
+                    <td style="padding:10px; border:1px solid #ddd;">${u.telefono}</td>
+                </tr>
+            `;
+        });
+
+        htmlPanel += `</table></div></div>`;
+        document.body.insertAdjacentHTML('beforeend', htmlPanel);
     }
 
     window.procesarRegistro = procesarRegistro;
-</script>
 
-</body>
-</html>
+    // --- LÓGICA DE COSTOS Y GEOLOCALIZACIÓN ---
+
+// 1. Configurar Autocompletado de Google para los inputs
+const options = { fields: ["formatted_address", "geometry"] };
+const autocompleteA = new google.maps.places.Autocomplete(document.getElementById('origen-texto'), options);
+const autocompleteB = new google.maps.places.Autocomplete(document.getElementById('destino-texto'), options);
+
+// 2. Función para obtener ubicación GPS automática
+window.obtenerUbicacionActual = function() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition((position) => {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            document.getElementById('origen-texto').value = `${lat}, ${lng}`;
+            alert("Ubicación actualizada por GPS");
+        });
+    }
+};
+
+// 3. Función Maestra de Cálculo
+window.calcularRecorrido = async function() {
+    const origen = document.getElementById('origen-texto').value;
+    const destino = document.getElementById('destino-texto').value;
+
+    if (!origen || !destino) {
+        alert("Por favor ingresa Origen y Destino");
+        return;
+    }
+
+    const service = new google.maps.DistanceMatrixService();
+    
+    service.getDistanceMatrix({
+        origins: [origen],
+        destinations: [destino],
+        travelMode: google.maps.TravelMode.DRIVING,
+        unitSystem: google.maps.UnitSystem.METRIC,
+    }, (response, status) => {
+        if (status === "OK") {
+            const distanciaMetros = response.rows[0].elements[0].distance.value;
+            const km = distanciaMetros / 1000;
+            
+            const costo = calcularTarifaRuncar(km);
+            
+            document.getElementById('distancia-km').innerText = km.toFixed(2);
+            document.getElementById('costo-total').innerText = `$${costo.toFixed(2)}`;
+            document.getElementById('resultado-viaje').style.display = "block";
+        }
+    });
+};
+
+// 4. Lógica de Precios Solicitada
+function calcularTarifaRuncar(km) {
+    let total = 0;
+    const kmEnteros = Math.ceil(km);
+
+    if (kmEnteros <= 3) {
+        // $1 por cada km (1km=$1, 2km=$2, 3km=$3)
+        total = kmEnteros * 1.00;
+    } else {
+        // A partir del km 4: $3 base + (0.30 * km extras)
+        const kmExtras = km - 3;
+        total = 3.00 + (kmExtras * 0.30);
+    }
+    return total;
+}
+
+window.confirmarViaje = async function() {
+    // Aquí puedes guardar el viaje en una nueva colección "viajes" en Firebase
+    alert("Buscando conductor cercano...");
+};
+    
+</script>
