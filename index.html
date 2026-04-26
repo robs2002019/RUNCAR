@@ -43,10 +43,14 @@
             
             <div id="reg-fields" style="display:none;">
                 <input type="text" id="reg-nombre" placeholder="Nombre Completo">
+                
                 <div style="display:flex; gap:5px;">
-                    <select id="reg-pais" style="flex:1;"><option value="+503">🇸🇻 +503</option><option value="+1">🇺🇸 +1</option></select>
+                    <select id="reg-pais" style="flex:1;">
+                        <option value="">Cargando países...</option>
+                    </select>
                     <input type="tel" id="reg-tel" placeholder="WhatsApp" style="flex:2;">
                 </div>
+
                 <div class="file-box"><label>Foto de Perfil</label><input type="file" id="foto-perfil"></div>
                 
                 <select id="reg-rol" onchange="toggleDriverReg()">
@@ -112,22 +116,45 @@
     const db = getFirestore(app);
     const auth = getAuth(app);
 
+    // --- CARGAR PAÍSES DEL MUNDO ---
+    async function cargarPaises() {
+        const selectPais = document.getElementById('reg-pais');
+        try {
+            const response = await fetch('https://restcountries.com/v3.1/all?fields=name,idd,flag,cca2');
+            const countries = await response.json();
+            selectPais.innerHTML = ''; 
+
+            countries.sort((a, b) => a.name.common.localeCompare(b.name.common));
+
+            countries.forEach(country => {
+                if (country.idd.root) {
+                    const dialCode = country.idd.root + (country.idd.suffixes ? country.idd.suffixes[0] : "");
+                    const option = document.createElement('option');
+                    option.value = dialCode;
+                    option.textContent = `${country.flag} ${country.name.common} (${dialCode})`;
+                    
+                    // Predeterminado El Salvador
+                    if(country.cca2 === 'SV') option.selected = true;
+                    selectPais.appendChild(option);
+                }
+            });
+        } catch (e) {
+            selectPais.innerHTML = '<option value="+503">🇸🇻 El Salvador (+503)</option>';
+        }
+    }
+    cargarPaises();
+
     let isReg = false;
     let pBase = 0;
 
-    // --- LÓGICA DE CIERRE DE SESIÓN ---
     window.cerrarSesion = async () => {
         try {
             await signOut(auth);
             alert("Sesión cerrada correctamente");
             location.reload(); 
-        } catch (error) {
-            console.error("Error al cerrar sesión:", error);
-            alert("No se pudo cerrar la sesión");
-        }
+        } catch (error) { alert("Error al cerrar sesión"); }
     };
 
-    // --- LÓGICA AUTH ---
     window.switchAuth = () => {
         isReg = !isReg;
         document.getElementById('reg-fields').style.display = isReg ? 'block' : 'none';
@@ -153,7 +180,7 @@
                     nombre: document.getElementById('reg-nombre').value,
                     whatsapp: document.getElementById('reg-pais').value + document.getElementById('reg-tel').value
                 });
-                alert("Registro completado. Documentos en revisión.");
+                alert("Registro completado.");
             } else {
                 await signInWithEmailAndPassword(auth, mail, pass);
             }
@@ -167,7 +194,6 @@
             const q = query(collection(db, "usuarios"), where("uid", "==", user.uid));
             const snap = await getDocs(q);
             
-            // Limpiar vistas antes de mostrar la activa
             document.getElementById('cliente-view').classList.remove('active-section');
             document.getElementById('driver-view').classList.remove('active-section');
 
@@ -182,15 +208,11 @@
                 }
             });
         } else {
-            // Si no hay usuario, mostrar login y ocultar el resto
             document.getElementById('auth-container').style.display = 'block';
-            document.getElementById('cliente-view').classList.remove('active-section');
-            document.getElementById('driver-view').classList.remove('active-section');
             document.getElementById('btn-logout').style.display = 'none';
         }
     });
 
-    // --- GEOLOCALIZACIÓN Y TARIFA ---
     let ds, dr;
     window.initMap = () => {
         ds = new google.maps.DirectionsService();
@@ -215,7 +237,6 @@
         });
     };
 
-    // --- NEGOCIACIÓN ---
     window.publicarViaje = async () => {
         await addDoc(collection(db, "viajes"), {
             cliente: auth.currentUser.uid,
@@ -270,7 +291,7 @@
         });
     }
 
-    window.confirmar = () => alert("¡Viaje confirmado! El conductor va en camino.");
+    window.confirmar = () => alert("¡Viaje confirmado!");
 </script>
 </body>
 </html>
