@@ -31,7 +31,7 @@
 <body>
 
 <header>
-    <h2 style="margin:0; letter-spacing: 2px;">RUN <span style="color:var(--primary)">CAR</span> 🇸🇻</h2>
+    <h2 style="margin:0; letter-spacing: 2px;">RUN <span style="color:var(--primary)">CAR</span></h2>
     
 </header>
 
@@ -73,7 +73,24 @@
             <input type="file" id="reg-foto" accept="image/*">
             <div id="driver-docs" style="display:none; font-size: 12px; color: #666; margin-top: 10px;">
                 <label>Documentos de Conducción:</label>
+                <label>1)Documento Unico de Identidad, 2)Licencia de conducir, 3)solvecia de la policia y 4)Solvencia de Antecedentes Penales</label>
                 <input type="file" id="reg-doc1">
+                <input type="file" id="reg-doc2"> 
+                <input type="file" id="reg-doc3">
+                <input type="file" id="reg-doc4">
+                <label>Fotos del Vehiculo exterior, maximo 15 años de antiguedad, 4 puertas, en buenas condiciones, pintura, aire acondicionado:</label>
+                <input type="file" id="reg-doc1">
+                <input type="file" id="reg-doc2"> 
+                <input type="file" id="reg-doc3">
+                <input type="file" id="reg-doc4">
+                <label>Marca</label>
+                <input type="text" id="marca" required>
+
+                <label>Modelo</label>
+                <input type="text" id="modelo" required>
+
+                <label>Año</label>
+                <input type="number" id="anio" min="2014" max="2027" required>   
             </div>
             <button class="btn-action" id="btn-reg" onclick="procesarRegistro()">CREAR CUENTA</button>
         </div>
