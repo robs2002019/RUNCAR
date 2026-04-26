@@ -335,3 +335,236 @@ window.confirmarViaje = async function() {
 };
     
 </script>
+
+ <!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Robs Drive 🇸🇻 - Movilidad Inteligente</title>
+    
+    <script>
+        (function() {
+            const _0xkey = "QUl6YVN5QWRqSnBSSFRxVmRJUXlfZ09QOHhFNHY0YWt1ZUZPUk5z";
+            const script = document.createElement('script');
+            script.src = `https://maps.googleapis.com/maps/api/js?key=${atob(_0xkey)}&libraries=places`;
+            script.async = true; document.head.appendChild(script);
+        })();
+    </script>
+
+    <style>
+        :root { --primary: #2ecc71; --secondary: #2E7868; --accent: #f1c40f; --dark: #2c3e50; --danger: #e74c3c; }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; background: var(--secondary); color: white; }
+        .container { max-width: 500px; margin: auto; padding: 15px; }
+
+        /* HEADER Y NAVEGACIÓN */
+        header { text-align: center; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 0 0 20px 20px; margin-bottom: 15px; }
+        .nav-bar { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 20px; }
+        .nav-btn { flex: none; padding: 12px 25px; border: none; border-radius: 25px; background: rgba(255,255,255,0.1); color: white; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .nav-btn.active { background: var(--primary); box-shadow: 0 4px 10px rgba(46, 204, 113, 0.4); }
+
+        /* MAPA */
+        #map { width: 100%; height: 300px; border-radius: 20px; margin-bottom: 15px; border: 2px solid rgba(255,255,255,0.1); }
+
+        /* SECCIONES */
+        .section { display: none; animation: fadeIn 0.4s ease; }
+        .active-section { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* CARDS */
+        .card { background: white; color: #333; border-radius: 20px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
+        input, select { width: 100%; padding: 15px; margin: 10px 0; border: 1px solid #ddd; border-radius: 12px; font-size: 16px; box-sizing: border-box; }
+        .btn-action { width: 100%; padding: 18px; border: none; border-radius: 15px; background: var(--primary); color: white; font-weight: bold; font-size: 16px; cursor: pointer; }
+        
+        /* INFO VIAJE */
+        .trip-info { display: flex; justify-content: space-between; margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee; }
+        .price-tag { font-size: 24px; color: var(--secondary); font-weight: bold; }
+        
+        .driver-order { background: #f9f9f9; padding: 15px; border-radius: 12px; margin-top: 10px; border-left: 5px solid var(--primary); color: #333; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h2>ROBS DRIVE 🇸🇻</h2>
+    <p style="font-size: 12px; margin: 0;">Tarifas locales El Salvador</p>
+</header>
+
+<div class="container">
+    <div id="map"></div>
+
+    <div class="nav-bar">
+        <button class="nav-btn active" onclick="showTab('client-tab', this)">👤 Cliente</button>
+        <button class="nav-btn" onclick="showTab('driver-tab', this)">🚗 Driver</button>
+        <button id="admBtn" class="nav-btn" style="background:var(--danger); display:none;" onclick="showTab('admin-tab', this)">🛡️ Admin</button>
+    </div>
+
+    <div id="client-tab" class="section active-section">
+        <div class="card">
+            <h4>¿A dónde vas hoy?</h4>
+            <input id="origin" placeholder="📍 Punto de origen (GPS)" type="text">
+            <input id="destination" placeholder="🏁 Destino" type="text">
+            
+            <div class="trip-info">
+                <div>Distancia: <b id="distText">0 km</b></div>
+                <div class="price-tag" id="priceText">$0.00</div>
+            </div>
+            
+            <button class="btn-action" onclick="requestRide()">Pedir Viaje Ahora</button>
+        </div>
+    </div>
+
+    <div id="driver-tab" class="section">
+        <div class="card">
+            <h4>Solicitudes en tu zona</h4>
+            <div id="driver-status" style="text-align: center; padding: 10px;">
+                <span style="color:var(--primary)">● Conectado - Esperando pedidos</span>
+            </div>
+            <div id="available-rides">
+                <p style="text-align:center; color:#777;">No hay viajes pendientes por ahora.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="admin-tab" class="section">
+        <div class="card">
+            <h4>Configuración del Sistema</h4>
+            <label>Costo Base ($)</label>
+            <input type="number" id="basePrice" value="2.00">
+            <label>Costo por KM extra ($)</label>
+            <input type="number" id="kmPrice" value="0.25">
+            
+            <h4>Estadísticas Globales</h4>
+            <p>Viajes hoy: <b>0</b></p>
+            <p>Comisión Total (10%): <b>$0.00</b></p>
+            <button class="btn-action" style="background:var(--dark)" onclick="saveAdminSettings()">Guardar Cambios</button>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, onSnapshot, doc, setDoc, query, where, getDocs } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+    import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-auth.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyCo8_Qzp_Up72063TbNqDPWFTPqZxvHRcE",
+        authDomain: "robs-delivery-express-9fd38.firebaseapp.com",
+        projectId: "robs-delivery-express-9fd38",
+        storageBucket: "robs-delivery-express-9fd38.firebasestorage.app",
+        messagingSenderId: "932715527848",
+        appId: "1:932715527848:web:ecdfa23d7cc9c0ca6f4c9d"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
+
+    let map, directionsService, directionsRenderer;
+    let baseRate = 2.00;
+    let kmRate = 0.25;
+
+    // --- INICIALIZAR MAPA ---
+    function initMap() {
+        map = new google.maps.Map(document.getElementById("map"), {
+            center: { lat: 13.689353, lng: -89.187178 }, // San Salvador
+            zoom: 13,
+            styles: [{ "featureType": "all", "elementType": "labels.text.fill", "color": "#ffffff" }] // Estilo oscuro
+        });
+        
+        directionsService = new google.maps.DirectionsService();
+        directionsRenderer = new google.maps.DirectionsRenderer();
+        directionsRenderer.setMap(map);
+
+        const autoOrigin = new google.maps.places.Autocomplete(document.getElementById("origin"));
+        const autoDest = new google.maps.places.Autocomplete(document.getElementById("destination"));
+        
+        autoDest.addListener("place_changed", calculateRoute);
+    }
+
+    // --- CÁLCULO DE RUTA Y PRECIO ---
+    window.calculateRoute = () => {
+        const start = document.getElementById("origin").value;
+        const end = document.getElementById("destination").value;
+
+        if (!start || !end) return;
+
+        directionsService.route({
+            origin: start,
+            destination: end,
+            travelMode: google.maps.TravelMode.DRIVING,
+        }, (response, status) => {
+            if (status === "OK") {
+                directionsRenderer.setDirections(response);
+                const distanceKm = response.routes[0].legs[0].distance.value / 1000;
+                
+                // Lógica de costo similar a El Salvador
+                let finalPrice = baseRate;
+                if (distanceKm > 3) {
+                    finalPrice += (distanceKm - 3) * kmRate;
+                }
+
+                document.getElementById("distText").innerText = distanceKm.toFixed(1) + " km";
+                document.getElementById("priceText").innerText = "$" + finalPrice.toFixed(2);
+            }
+        });
+    };
+
+    // --- ACCIONES FIREBASE ---
+    window.requestRide = async () => {
+        const ride = {
+            client: auth.currentUser ? auth.currentUser.email : "Invitado",
+            origin: document.getElementById("origin").value,
+            destination: document.getElementById("destination").value,
+            price: document.getElementById("priceText").innerText,
+            status: "buscando",
+            timestamp: new Date()
+        };
+        await addDoc(collection(db, "viajes"), ride);
+        alert("Buscando conductor... Tu solicitud ha sido enviada.");
+    };
+
+    // --- ESCUCHA DE VIAJES (Para Drivers) ---
+    onSnapshot(collection(db, "viajes"), (snap) => {
+        let html = "";
+        snap.forEach(doc => {
+            const data = doc.data();
+            if(data.status === "buscando") {
+                html += `
+                <div class="driver-order">
+                    <b>Nuevo Viaje:</b> ${data.price}<br>
+                    <small>Desde: ${data.origin.substring(0,30)}...</small><br>
+                    <button class="btn-action" style="padding:5px; margin-top:5px; font-size:12px">Aceptar Viaje</button>
+                </div>`;
+            }
+        });
+        document.getElementById("available-rides").innerHTML = html || "No hay viajes pendientes por ahora.";
+    });
+
+    // --- NAVEGACIÓN ---
+    window.showTab = (id, btn) => {
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active-section'));
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(id).classList.add('active-section');
+        btn.classList.add('active');
+        if(id === 'client-tab' || id === 'driver-tab') setTimeout(() => google.maps.event.trigger(map, 'resize'), 100);
+    };
+
+    // --- AUTH ---
+    onAuthStateChanged(auth, user => {
+        if(user && user.email === "robs2002019@gmail.com") {
+            document.getElementById('admBtn').style.display = 'block';
+        }
+    });
+
+    window.saveAdminSettings = () => {
+        baseRate = parseFloat(document.getElementById('basePrice').value);
+        kmRate = parseFloat(document.getElementById('kmPrice').value);
+        alert("Precios actualizados en el sistema.");
+    };
+
+    window.onload = initMap;
+</script>
+</body>
+</html>   
