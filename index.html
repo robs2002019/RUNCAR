@@ -3,46 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ROBS DRIVE 🇸🇻 - Movilidad Inteligente</title>
+    <title>RUNCAR - Movilidad Inteligente</title>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/css/intlTelInput.css"/>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/js/intlTelInput.min.js"></script>
-    <script src="https://maps.googleapis.com/maps/api/js?key=TU_API_KEY&libraries=places,geometry"></script>
+    
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAdjJpRHTqVdIQy_gOP8xE4v4akueFORNs&libraries=places,geometry"></script>
 
     <style>
-        :root { 
-            --primary: #2ecc71; 
-            --secondary: #1a1a1a; 
-            --accent: #f1c40f; 
-            --dark: #2c3e50; 
-            --white: #ffffff;
-        }
+        :root { --primary: #2ecc71; --secondary: #1a1a1a; --accent: #f1c40f; --white: #ffffff; }
         body { font-family: 'Segoe UI', sans-serif; margin: 0; background: var(--secondary); color: white; padding-bottom: 50px; }
         .container { max-width: 500px; margin: auto; padding: 15px; }
-
         header { text-align: center; padding: 20px; background: rgba(0,0,0,0.3); border-radius: 0 0 25px 25px; margin-bottom: 20px; border-bottom: 2px solid var(--primary); }
-        
         .nav-bar { display: flex; gap: 10px; margin-bottom: 20px; justify-content: center; }
         .nav-btn { padding: 12px 20px; border: none; border-radius: 12px; background: rgba(255,255,255,0.1); color: white; font-weight: bold; cursor: pointer; transition: 0.3s; }
         .nav-btn.active { background: var(--primary); box-shadow: 0 4px 10px rgba(46, 204, 113, 0.3); }
-
-        #map { width: 100%; height: 250px; border-radius: 20px; margin-bottom: 15px; border: 2px solid var(--primary); }
-
+        #map { width: 100%; height: 250px; border-radius: 20px; margin-bottom: 15px; border: 2px solid var(--primary); background: #222; }
         .card { background: var(--white); color: #333; border-radius: 20px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
-        h4 { margin-top: 0; color: var(--secondary); border-bottom: 2px solid var(--primary); display: inline-block; }
-        
-        input { width: 100%; padding: 14px; margin: 8px 0; border: 1px solid #ddd; border-radius: 10px; font-size: 15px; box-sizing: border-box; }
-        .btn-action { width: 100%; padding: 16px; border: none; border-radius: 12px; background: var(--primary); color: white; font-weight: bold; font-size: 16px; cursor: pointer; transition: 0.3s; margin-top: 10px; }
-        .btn-action:hover { opacity: 0.9; transform: scale(0.98); }
-
+        input, select { width: 100%; padding: 14px; margin: 8px 0; border: 1px solid #ddd; border-radius: 10px; font-size: 15px; box-sizing: border-box; }
+        .btn-action { width: 100%; padding: 16px; border: none; border-radius: 12px; background: var(--primary); color: white; font-weight: bold; font-size: 16px; cursor: pointer; margin-top: 10px; }
         .price-box { background: #f8f9fa; padding: 15px; border-radius: 12px; margin-top: 15px; text-align: center; border: 1px solid #eee; }
-        .price-tag { font-size: 28px; color: var(--secondary); font-weight: bold; display: block; }
-        
         .section { display: none; }
-        .active-section { display: block; animation: fadeIn 0.4s ease; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-        /* Admin Modal Estilo Runcar */
+        .active-section { display: block; }
         #admin-modal { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:9999; overflow-y:auto; padding:20px; box-sizing:border-box; display:none; }
     </style>
 </head>
@@ -50,75 +32,66 @@
 
 <header>
     <h2 style="margin:0; letter-spacing: 2px;">ROBS <span style="color:var(--primary)">DRIVE</span> 🇸🇻</h2>
-    <p style="font-size: 12px; opacity: 0.8; margin: 5px 0 0 0;">Tarifas Oficiales: $1/km (1-3km) | $0.30/km extra (4km+)</p>
+    <p style="font-size: 11px; opacity: 0.8;">Tarifas: $1/km (1-3km) | $0.30/km extra</p>
 </header>
 
 <div class="container">
     <div id="map"></div>
 
     <div class="nav-bar">
-        <button class="nav-btn active" onclick="showTab('tab-viaje', this)">🚕 Pedir Viaje</button>
+        <button class="nav-btn active" onclick="showTab('tab-viaje', this)">🚕 Viaje</button>
         <button class="nav-btn" onclick="showTab('tab-registro', this)">📝 Registro</button>
     </div>
 
     <div id="tab-viaje" class="section active-section">
         <div class="card">
-            <h4>¿A dónde vas hoy?</h4>
+            <h4>Solicitar Transporte</h4>
             <div style="display: flex; gap: 5px;">
-                <input id="origin" placeholder="📍 Punto A (Origen / GPS)" type="text">
-                <button onclick="obtenerGPS()" style="background:var(--primary); border:none; border-radius:10px; padding:0 15px; color:white; cursor:pointer;">📍</button>
+                <input id="origin" placeholder="📍 Origen">
+                <button onclick="obtenerGPS()" style="background:var(--primary); border:none; border-radius:10px; padding:0 15px; color:white;">📍</button>
             </div>
-            <input id="destination" placeholder="🏁 Punto B (Destino)" type="text">
+            <input id="destination" placeholder="🏁 Destino">
             
-            <div id="info-recorrido" style="display:none;">
-                <div class="price-box">
-                    <span style="font-size: 12px; color: #666;">DISTANCIA ESTIMADA</span>
-                    <b id="distText" style="display:block; font-size: 18px;">0 km</b>
-                    <span style="font-size: 12px; color: #666; margin-top: 10px; display: block;">COSTO TOTAL</span>
-                    <span class="price-tag" id="priceText">$0.00</span>
-                </div>
-                <button class="btn-action" onclick="confirmarViaje()">CONFIRMAR VIAJE</button>
+            <div id="info-recorrido" style="display:none;" class="price-box">
+                <small>DISTANCIA: <b id="distText">0 km</b></small><br>
+                <b style="font-size: 24px;" id="priceText">$0.00</b>
+                <button class="btn-action" onclick="confirmarViaje()">PEDIR AHORA</button>
             </div>
-            
-            <button id="btn-calc" class="btn-action" style="background: var(--secondary);" onclick="calculateRoute()">CALCULAR PRECIO</button>
+            <button id="btn-calc" class="btn-action" style="background:#444;" onclick="calculateRoute()">CALCULAR COSTO</button>
         </div>
     </div>
 
     <div id="tab-registro" class="section">
         <div class="card">
             <h4>Registro de Usuario</h4>
-            <select id="reg-tipo" onchange="toggleRegFields()" style="width:100%; padding:12px; border-radius:10px; margin-bottom:10px;">
-                <option value="cliente">Soy Cliente</option>
-                <option value="driver">Quiero ser Conductor (Driver)</option>
+            <select id="reg-tipo" onchange="toggleRegFields()">
+                <option value="cliente">Cliente</option>
+                <option value="driver">Conductor</option>
             </select>
-            
             <input type="text" id="reg-nombre" placeholder="Nombre Completo">
             <input type="tel" id="reg-telefono">
-            <label style="font-size:12px; color:#666;">Foto de Perfil:</label>
             <input type="file" id="reg-foto" accept="image/*">
-
-            <div id="driver-docs" style="display:none; background:#fff8e1; padding:10px; border-radius:10px; border:1px dashed #ffc107; margin-top:10px;">
-                <p style="font-size:11px; margin:0 0 5px 0;"><b>DOCS REQUERIDOS:</b></p>
-                <input type="file" id="reg-doc1" style="font-size:11px;">
-                <input type="file" id="reg-doc2" style="font-size:11px;">
+            <div id="driver-docs" style="display:none; font-size: 12px; color: #666; margin-top: 10px;">
+                <label>Documentos de Conducción:</label>
+                <input type="file" id="reg-doc1">
             </div>
-
-            <button class="btn-action" onclick="procesarRegistro()">CREAR CUENTA</button>
+            <button class="btn-action" id="btn-reg" onclick="procesarRegistro()">CREAR CUENTA</button>
         </div>
     </div>
 </div>
 
 <div id="admin-modal">
-    <button onclick="cerrarAdmin()" style="float:right; background:var(--primary); border:none; padding:10px; border-radius:5px; font-weight:bold;">CERRAR X</button>
-    <h2 style="color:var(--primary)">PANEL CONTROL RUNCAR</h2>
+    <button onclick="cerrarAdmin()" style="float:right; padding:10px;">CERRAR</button>
+    <h2 style="color:var(--primary)">ADMINISTRACIÓN</h2>
     <div id="admin-content"></div>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
     import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-storage.js";
 
+    // Tu configuración de Firebase (según tus fotos)
     const firebaseConfig = {
         apiKey: "AIzaSyCo8_Qzp_Up72063TbNqDPWFTPqZxvHRcE",
         authDomain: "robs-delivery-express-9fd38.firebaseapp.com",
@@ -132,126 +105,64 @@
     const db = getFirestore(app);
     const storage = getStorage(app);
 
-    // --- MAPA Y RUTAS ---
     let map, directionsService, directionsRenderer;
 
-    function initMap() {
+    window.initMap = () => {
         map = new google.maps.Map(document.getElementById("map"), {
             center: { lat: 13.6893, lng: -89.1871 },
             zoom: 13,
-            disableDefaultUI: true,
-            styles: [{"featureType":"water","elementType":"geometry","stylers":[{"color":"#e9e9e9"},{"lightness":17}]}]
+            styles: [{ featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] }]
         });
         directionsService = new google.maps.DirectionsService();
-        directionsRenderer = new google.maps.DirectionsRenderer({ map: map });
+        directionsRenderer = new google.maps.DirectionsRenderer({ map });
 
         new google.maps.places.Autocomplete(document.getElementById("origin"));
         new google.maps.places.Autocomplete(document.getElementById("destination"));
-    }
-
-    window.obtenerGPS = () => {
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(p => {
-                document.getElementById("origin").value = `${p.coords.latitude}, ${p.coords.longitude}`;
-            });
-        }
     };
 
     window.calculateRoute = () => {
         const start = document.getElementById("origin").value;
         const end = document.getElementById("destination").value;
-        if (!start || !end) return alert("Ingresa origen y destino");
+        if (!start || !end) return alert("Ingresa puntos A y B");
 
-        directionsService.route({
-            origin: start,
-            destination: end,
-            travelMode: 'DRIVING'
-        }, (res, status) => {
+        directionsService.route({ origin: start, destination: end, travelMode: 'DRIVING' }, (res, status) => {
             if (status === 'OK') {
                 directionsRenderer.setDirections(res);
-                const distKm = res.routes[0].legs[0].distance.value / 1000;
-                const costo = calcularTarifa(distKm);
-                
-                document.getElementById("distText").innerText = distKm.toFixed(2) + " km";
-                document.getElementById("priceText").innerText = "$" + costo.toFixed(2);
+                const km = res.routes[0].legs[0].distance.value / 1000;
+                const price = Math.ceil(km) <= 3 ? Math.ceil(km) : 3 + (km - 3) * 0.3;
+                document.getElementById("distText").innerText = km.toFixed(1) + " km";
+                document.getElementById("priceText").innerText = "$" + price.toFixed(2);
                 document.getElementById("info-recorrido").style.display = "block";
                 document.getElementById("btn-calc").style.display = "none";
-            }
+            } else { alert("No se pudo calcular la ruta."); }
         });
     };
-
-    function calcularTarifa(km) {
-        const kmEnteros = Math.ceil(km);
-        if (kmEnteros <= 3) return kmEnteros * 1.0;
-        return 3.00 + ((km - 3) * 0.30);
-    }
-
-    // --- REGISTRO ---
-    const iti = window.intlTelInput(document.querySelector("#reg-telefono"), {
-        initialCountry: "sv",
-        utilsScript: "https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/js/utils.js"
-    });
 
     window.procesarRegistro = async () => {
+        const btn = document.getElementById("btn-reg");
         const nombre = document.getElementById("reg-nombre").value;
-        const tipo = document.getElementById("reg-tipo").value;
-        const foto = document.getElementById("reg-foto").files[0];
-        
-        if(!nombre || !foto) return alert("Faltan datos");
+        const file = document.getElementById("reg-foto").files[0];
+        if(!nombre || !file) return alert("Completa nombre y foto");
 
+        btn.disabled = true; btn.innerText = "Registrando...";
         try {
-            const imgRef = ref(storage, `perfiles/${Date.now()}_${foto.name}`);
-            const snap = await uploadBytes(imgRef, foto);
+            const snap = await uploadBytes(ref(storage, `users/${Date.now()}`), file);
             const url = await getDownloadURL(snap.ref);
-
-            await addDoc(collection(db, "usuarios"), {
-                nombre, rol: tipo, fotoPerfil: url, telefono: iti.getNumber(), fecha: new Date()
-            });
-            alert("¡Registro enviado con éxito!");
-            location.reload();
-        } catch(e) { alert("Error: " + e.message); }
+            await addDoc(collection(db, "usuarios"), { nombre, foto: url, rol: document.getElementById("reg-tipo").value, fecha: new Date() });
+            alert("¡Registro Exitoso!"); location.reload();
+        } catch(e) { alert("Error: " + e.message); btn.disabled = false; }
     };
 
-    // --- ADMIN OCULTO (Tecla W) ---
-    window.addEventListener('keydown', (e) => {
-        if (e.key.toLowerCase() === 'w') {
-            const p = prompt("Clave Admin:");
-            if (p === "Cordia1987") {
-                document.getElementById("admin-modal").style.display = "block";
-                cargarUsuariosAdmin();
-            }
-        }
-    });
-
-    async function cargarUsuariosAdmin() {
-        const snap = await getDocs(query(collection(db, "usuarios"), orderBy("fecha", "desc")));
-        let h = `<table style="width:100%; background:white; color:black; margin-top:20px; border-collapse:collapse;">
-            <tr style="background:var(--primary)"><th>Foto</th><th>Nombre</th><th>Rol</th><th>Tel</th></tr>`;
-        snap.forEach(d => {
-            const u = d.data();
-            h += `<tr style="border-bottom:1px solid #ddd">
-                <td><img src="${u.fotoPerfil}" width="40"></td>
-                <td>${u.nombre}</td><td>${u.rol}</td><td>${u.telefono}</td>
-            </tr>`;
-        });
-        document.getElementById("admin-content").innerHTML = h + `</table>`;
-    }
-
-    // --- NAVEGACIÓN ---
+    window.addEventListener('keydown', (e) => { if (e.key === 'w') document.getElementById("admin-modal").style.display = "block"; });
     window.showTab = (id, btn) => {
         document.querySelectorAll('.section').forEach(s => s.classList.remove('active-section'));
-        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
         document.getElementById(id).classList.add('active-section');
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
     };
-
-    window.toggleRegFields = () => {
-        const tipo = document.getElementById("reg-tipo").value;
-        document.getElementById("driver-docs").style.display = tipo === 'driver' ? 'block' : 'none';
-    };
-
+    window.obtenerGPS = () => navigator.geolocation.getCurrentPosition(p => { document.getElementById("origin").value = `${p.coords.latitude},${p.coords.longitude}`; });
+    window.toggleRegFields = () => document.getElementById("driver-docs").style.display = document.getElementById("reg-tipo").value === 'driver' ? 'block' : 'none';
     window.cerrarAdmin = () => document.getElementById("admin-modal").style.display = "none";
-    window.confirmarViaje = () => alert("Buscando el ROBS DRIVE más cercano para ti...");
 
     window.onload = initMap;
 </script>
