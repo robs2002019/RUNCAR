@@ -91,13 +91,13 @@
         <div id="lista-viajes-global"></div>
     </div>
 
-    <button id="btn-logout" class="btn-action" style="display:none; background:#c0392b; margin-top:20px;" onclick="location.reload()">CERRAR SESIÓN</button>
+    <button id="btn-logout" class="btn-action" style="display:none; background:#c0392b; margin-top:20px;" onclick="cerrarSesion()">CERRAR SESIÓN</button>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-app.js";
     import { getFirestore, collection, addDoc, getDocs, query, where, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
-    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-auth.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-auth.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyAyRrBUmw4OEzS7EmvK_XmDk6Z5rrjLC3A",
@@ -115,6 +115,18 @@
     let isReg = false;
     let pBase = 0;
 
+    // --- LÓGICA DE CIERRE DE SESIÓN ---
+    window.cerrarSesion = async () => {
+        try {
+            await signOut(auth);
+            alert("Sesión cerrada correctamente");
+            location.reload(); 
+        } catch (error) {
+            console.error("Error al cerrar sesión:", error);
+            alert("No se pudo cerrar la sesión");
+        }
+    };
+
     // --- LÓGICA AUTH ---
     window.switchAuth = () => {
         isReg = !isReg;
@@ -126,7 +138,6 @@
         document.getElementById('driver-docs').style.display = document.getElementById('reg-rol').value === 'driver' ? 'block' : 'none';
     };
 
-    // Llenar años
     const carAnio = document.getElementById('car-anio');
     for(let i=2027; i>=2014; i--) { carAnio.options.add(new Option(i, i)); }
 
@@ -155,6 +166,11 @@
             document.getElementById('btn-logout').style.display = 'block';
             const q = query(collection(db, "usuarios"), where("uid", "==", user.uid));
             const snap = await getDocs(q);
+            
+            // Limpiar vistas antes de mostrar la activa
+            document.getElementById('cliente-view').classList.remove('active-section');
+            document.getElementById('driver-view').classList.remove('active-section');
+
             snap.forEach(d => {
                 if(d.data().rol === 'cliente') {
                     document.getElementById('cliente-view').classList.add('active-section');
@@ -165,6 +181,12 @@
                     escucharViajes();
                 }
             });
+        } else {
+            // Si no hay usuario, mostrar login y ocultar el resto
+            document.getElementById('auth-container').style.display = 'block';
+            document.getElementById('cliente-view').classList.remove('active-section');
+            document.getElementById('driver-view').classList.remove('active-section');
+            document.getElementById('btn-logout').style.display = 'none';
         }
     });
 
@@ -224,11 +246,12 @@
 
     window.enviarContraoferta = async (id) => {
         const val = document.getElementById(`c-${id}`).value;
+        const viajeRef = (await getDocs(query(collection(db, "viajes")))).docs.find(x => x.id === id);
         await addDoc(collection(db, "ofertas"), {
             viajeId: id,
             driver: auth.currentUser.uid,
             precio: val,
-            clienteId: (await getDocs(query(collection(db, "viajes")))).docs.find(x => x.id === id).data().cliente
+            clienteId: viajeRef.data().cliente
         });
         alert("Oferta enviada.");
     };
