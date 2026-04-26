@@ -7,7 +7,6 @@
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/css/intlTelInput.css"/>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/js/intlTelInput.min.js"></script>
-    
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAdjJpRHTqVdIQy_gOP8xE4v4akueFORNs&libraries=places,geometry"></script>
 
     <style>
@@ -32,7 +31,6 @@
 
 <header>
     <h2 style="margin:0; letter-spacing: 2px;">RUN <span style="color:var(--primary)">CAR</span></h2>
-    
 </header>
 
 <div class="container">
@@ -51,7 +49,6 @@
                 <button onclick="obtenerGPS()" style="background:var(--primary); border:none; border-radius:10px; padding:0 15px; color:white;">📍</button>
             </div>
             <input id="destination" placeholder="🏁 Destino">
-            
             <div id="info-recorrido" style="display:none;" class="price-box">
                 <small>DISTANCIA: <b id="distText">0 km</b></small><br>
                 <b style="font-size: 24px;" id="priceText">$0.00</b>
@@ -62,96 +59,33 @@
     </div>
 
     <div id="tab-registro" class="section">
-    <div class="card">
-        <h4>Registro de Usuario</h4>
-        <select id="reg-tipo" onchange="toggleRegFields()">
-            <option value="cliente">Soy Cliente</option>
-            <option value="driver">Quiero ser Conductor</option>
-        </select>
-        
-        <input type="text" id="reg-nombre" placeholder="Nombre Completo">
-        <input type="tel" id="reg-telefono" placeholder="Teléfono">
-        <label style="font-size:12px; color:#666;">Foto de Perfil:</label>
-        <input type="file" id="reg-foto" accept="image/*">
+        <div class="card">
+            <h4>Registro de Usuario</h4>
+            <select id="reg-tipo" onchange="toggleRegFields()">
+                <option value="cliente">Soy Cliente</option>
+                <option value="driver">Quiero ser Conductor</option>
+            </select>
+            <input type="text" id="reg-nombre" placeholder="Nombre Completo">
+            <input type="tel" id="reg-telefono" placeholder="Teléfono">
+            <label style="font-size:12px; color:#666;">Foto de Perfil:</label>
+            <input type="file" id="reg-foto" accept="image/*">
 
-        <div id="driver-docs" style="display:none; background:#f9f9f9; padding:15px; border-radius:10px; border:1px dashed #ccc; margin-top:10px;">
-            <p style="font-size:12px; font-weight:bold; color:var(--secondary);">DOCUMENTACIÓN PERSONAL (PDF/Fotos):</p>
-            <small>DUI, Licencia, Solvencia PNC y Penales</small>
-            <input type="file" id="doc-personal" multiple> 
-            
-            <p style="font-size:12px; font-weight:bold; color:var(--secondary); margin-top:10px;">FOTOS DEL VEHÍCULO:</p>
-            <small>Exterior, Interior, Placas</small>
-            <input type="file" id="doc-vehiculo" multiple>
-
-            <p style="font-size:12px; font-weight:bold; color:var(--secondary); margin-top:10px;">DATOS DEL AUTO:</p>
-            <input type="text" id="marca" placeholder="Marca (Ej: Toyota)">
-            <input type="text" id="modelo" placeholder="Modelo (Ej: Corolla)">
-            <input type="number" id="anio" placeholder="Año (Mín. 2011)" min="2011" max="2027">
+            <div id="driver-docs" style="display:none; background:#f9f9f9; padding:15px; border-radius:10px; border:1px dashed #ccc; margin-top:10px;">
+                <p style="font-size:12px; font-weight:bold; color:var(--secondary);">DOCUMENTACIÓN PERSONAL:</p>
+                <input type="file" id="doc-personal" multiple> 
+                <p style="font-size:12px; font-weight:bold; color:var(--secondary); margin-top:10px;">DATOS DEL AUTO:</p>
+                <input type="text" id="marca" placeholder="Marca">
+                <input type="text" id="modelo" placeholder="Modelo">
+                <input type="number" id="anio" placeholder="Año (Mín. 2014)" min="2014">
+            </div>
+            <button class="btn-action" id="btn-reg" onclick="procesarRegistro()">FINALIZAR REGISTRO</button>
         </div>
-
-        <button class="btn-action" id="btn-reg" onclick="procesarRegistro()">FINALIZAR REGISTRO</button>
     </div>
 </div>
 
-<script type="module">
-    // ... (Mantén tus importaciones y config de Firebase) ...
-
-    window.procesarRegistro = async () => {
-        const btn = document.getElementById("btn-reg");
-        const nombre = document.getElementById("reg-nombre").value;
-        const tipo = document.getElementById("reg-tipo").value;
-        const fotoPerfil = document.getElementById("reg-foto").files[0];
-
-        if (!nombre || !fotoPerfil) return alert("Por favor, sube al menos tu nombre y foto de perfil.");
-
-        btn.disabled = true;
-        btn.innerText = "Subiendo datos...";
-
-        try {
-            // 1. Subir Foto de Perfil
-            const perfilRef = ref(storage, `perfiles/${Date.now()}_${fotoPerfil.name}`);
-            const perfilSnap = await uploadBytes(perfilRef, fotoPerfil);
-            const perfilUrl = await getDownloadURL(perfilSnap.ref);
-
-            // Objeto base del usuario
-            let userData = {
-                nombre,
-                rol: tipo,
-                fotoPerfil: perfilUrl,
-                telefono: document.getElementById("reg-telefono").value,
-                fecha: new Date(),
-                estado: "pendiente" // Para que tú los apruebes desde el admin
-            };
-
-            // 2. Si es Conductor, procesar datos adicionales
-            if (tipo === 'driver') {
-                userData.vehiculo = {
-                    marca: document.getElementById("marca").value,
-                    modelo: document.getElementById("modelo").value,
-                    anio: document.getElementById("anio").value
-                };
-                
-                // Nota: Para simplificar, aquí podrías agregar lógica para subir los arrays 
-                // de 'doc-personal' y 'doc-vehiculo' siguiendo el mismo patrón de uploadBytes.
-            }
-
-            // 3. Guardar en Firestore
-            await addDoc(collection(db, "usuarios"), userData);
-            
-            alert("¡Registro enviado con éxito! Revisaremos tu perfil pronto.");
-            location.reload();
-
-        } catch (error) {
-            console.error(error);
-            alert("Error al registrar: " + error.message);
-            btn.disabled = false;
-            btn.innerText = "FINALIZAR REGISTRO";
-        }
-    };
-
 <div id="admin-modal">
-    <button onclick="cerrarAdmin()" style="float:right; padding:10px;">CERRAR</button>
-    <h2 style="color:var(--primary)">ADMINISTRACIÓN</h2>
+    <button onclick="cerrarAdmin()" style="float:right; padding:10px; background:var(--primary); border:none; color:white; border-radius:5px;">CERRAR</button>
+    <h2 style="color:var(--primary)">ADMINISTRACIÓN DE RUNCAR</h2>
     <div id="admin-content"></div>
 </div>
 
@@ -160,7 +94,6 @@
     import { getFirestore, collection, addDoc, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
     import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-storage.js";
 
-    // Tu configuración de Firebase (según tus fotos)
     const firebaseConfig = {
         apiKey: "AIzaSyAyRrBUmw4OEzS7EmvK_XmDk6Z5rrjLC3A",
         authDomain: "runcar-6eda0.firebaseapp.com",
@@ -174,8 +107,8 @@
     const db = getFirestore(app);
     const storage = getStorage(app);
 
+    // --- MAPA ---
     let map, directionsService, directionsRenderer;
-
     window.initMap = () => {
         map = new google.maps.Map(document.getElementById("map"), {
             center: { lat: 13.6893, lng: -89.1871 },
@@ -184,7 +117,6 @@
         });
         directionsService = new google.maps.DirectionsService();
         directionsRenderer = new google.maps.DirectionsRenderer({ map });
-
         new google.maps.places.Autocomplete(document.getElementById("origin"));
         new google.maps.places.Autocomplete(document.getElementById("destination"));
     };
@@ -192,8 +124,7 @@
     window.calculateRoute = () => {
         const start = document.getElementById("origin").value;
         const end = document.getElementById("destination").value;
-        if (!start || !end) return alert("Ingresa puntos A y B");
-
+        if (!start || !end) return alert("Ingresa origen y destino");
         directionsService.route({ origin: start, destination: end, travelMode: 'DRIVING' }, (res, status) => {
             if (status === 'OK') {
                 directionsRenderer.setDirections(res);
@@ -203,36 +134,85 @@
                 document.getElementById("priceText").innerText = "$" + price.toFixed(2);
                 document.getElementById("info-recorrido").style.display = "block";
                 document.getElementById("btn-calc").style.display = "none";
-            } else { alert("No se pudo calcular la ruta."); }
+            }
         });
     };
 
+    // --- REGISTRO ---
     window.procesarRegistro = async () => {
         const btn = document.getElementById("btn-reg");
         const nombre = document.getElementById("reg-nombre").value;
-        const file = document.getElementById("reg-foto").files[0];
-        if(!nombre || !file) return alert("Completa nombre y foto");
+        const tipo = document.getElementById("reg-tipo").value;
+        const fotoFile = document.getElementById("reg-foto").files[0];
+
+        if(!nombre || !fotoFile) return alert("Nombre y foto son obligatorios");
 
         btn.disabled = true; btn.innerText = "Registrando...";
         try {
-            const snap = await uploadBytes(ref(storage, `users/${Date.now()}`), file);
+            const snap = await uploadBytes(ref(storage, `users/${Date.now()}`), fotoFile);
             const url = await getDownloadURL(snap.ref);
-            await addDoc(collection(db, "usuarios"), { nombre, foto: url, rol: document.getElementById("reg-tipo").value, fecha: new Date() });
-            alert("¡Registro Exitoso!"); location.reload();
+            
+            let data = {
+                nombre, rol: tipo, fotoPerfil: url, 
+                telefono: document.getElementById("reg-telefono").value, 
+                fecha: new Date(), estado: "pendiente"
+            };
+
+            if(tipo === 'driver') {
+                data.vehiculo = {
+                    marca: document.getElementById("marca").value,
+                    modelo: document.getElementById("modelo").value,
+                    anio: document.getElementById("anio").value
+                };
+            }
+
+            await addDoc(collection(db, "usuarios"), data);
+            alert("¡Registro enviado!"); location.reload();
         } catch(e) { alert("Error: " + e.message); btn.disabled = false; }
     };
 
-    window.addEventListener('keydown', (e) => { if (e.key === 'w') document.getElementById("admin-modal").style.display = "block"; });
+    // --- ADMIN ---
+    window.cargarUsuariosAdmin = async () => {
+        const content = document.getElementById("admin-content");
+        content.innerHTML = "<p>Cargando...</p>";
+        try {
+            const snap = await getDocs(query(collection(db, "usuarios"), orderBy("fecha", "desc")));
+            let html = `<table style="width:100%; background:white; color:#333; border-collapse:collapse; font-size:12px;">
+                <tr style="background:var(--primary); color:white;">
+                    <th style="padding:10px;">Perfil</th><th>Datos</th><th>Rol</th><th>Vehículo</th>
+                </tr>`;
+            snap.forEach(doc => {
+                const u = doc.data();
+                html += `<tr style="border-bottom:1px solid #eee;">
+                    <td style="padding:10px;"><img src="${u.fotoPerfil}" width="40" style="border-radius:50%"></td>
+                    <td><b>${u.nombre}</b><br>${u.telefono || ''}</td>
+                    <td>${u.rol.toUpperCase()}</td>
+                    <td>${u.vehiculo ? u.vehiculo.marca + ' ' + u.vehiculo.modelo : '---'}</td>
+                </tr>`;
+            });
+            content.innerHTML = html + "</table>";
+        } catch(e) { content.innerHTML = e.message; }
+    };
+
+    window.addEventListener('keydown', (e) => { 
+        if (e.key.toLowerCase() === 'w') {
+            document.getElementById("admin-modal").style.display = "block";
+            cargarUsuariosAdmin();
+        }
+    });
+
+    // --- UTILIDADES ---
     window.showTab = (id, btn) => {
         document.querySelectorAll('.section').forEach(s => s.classList.remove('active-section'));
         document.getElementById(id).classList.add('active-section');
         document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
     };
-    window.obtenerGPS = () => navigator.geolocation.getCurrentPosition(p => { document.getElementById("origin").value = `${p.coords.latitude},${p.coords.longitude}`; });
+    window.obtenerGPS = () => navigator.geolocation.getCurrentPosition(p => { 
+        document.getElementById("origin").value = `${p.coords.latitude},${p.coords.longitude}`; 
+    });
     window.toggleRegFields = () => document.getElementById("driver-docs").style.display = document.getElementById("reg-tipo").value === 'driver' ? 'block' : 'none';
     window.cerrarAdmin = () => document.getElementById("admin-modal").style.display = "none";
-
     window.onload = initMap;
 </script>
 </body>
