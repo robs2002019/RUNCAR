@@ -3,28 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RUNCAR - Movilidad Inteligente</title>
+    <title>RUNCAR - Login y Movilidad</title>
     
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/css/intlTelInput.css"/>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/js/intlTelInput.min.js"></script>
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAdjJpRHTqVdIQy_gOP8xE4v4akueFORNs&libraries=places,geometry"></script>
 
     <style>
         :root { --primary: #2ecc71; --secondary: #1a1a1a; --accent: #f1c40f; --white: #ffffff; }
         body { font-family: 'Segoe UI', sans-serif; margin: 0; background: var(--secondary); color: white; padding-bottom: 50px; }
         .container { max-width: 500px; margin: auto; padding: 15px; }
-        header { text-align: center; padding: 20px; background: rgba(0,0,0,0.3); border-radius: 0 0 25px 25px; margin-bottom: 20px; border-bottom: 2px solid var(--primary); }
+        header { text-align: center; padding: 20px; background: rgba(0,0,0,0.3); border-radius: 0 0 25px 25px; border-bottom: 2px solid var(--primary); margin-bottom: 20px; }
+        
+        /* Pantallas de Acceso */
+        #auth-container { display: block; }
+        #app-container { display: none; } /* Se activa al loguearse */
+
         .nav-bar { display: flex; gap: 10px; margin-bottom: 20px; justify-content: center; }
-        .nav-btn { padding: 12px 20px; border: none; border-radius: 12px; background: rgba(255,255,255,0.1); color: white; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        .nav-btn.active { background: var(--primary); box-shadow: 0 4px 10px rgba(46, 204, 113, 0.3); }
+        .nav-btn { padding: 12px 20px; border: none; border-radius: 12px; background: rgba(255,255,255,0.1); color: white; font-weight: bold; cursor: pointer; }
+        .nav-btn.active { background: var(--primary); }
+
         #map { width: 100%; height: 250px; border-radius: 20px; margin-bottom: 15px; border: 2px solid var(--primary); background: #222; }
-        .card { background: var(--white); color: #333; border-radius: 20px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        .card { background: var(--white); color: #333; border-radius: 20px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); margin-bottom: 20px; }
+        
         input, select { width: 100%; padding: 14px; margin: 8px 0; border: 1px solid #ddd; border-radius: 10px; font-size: 15px; box-sizing: border-box; }
-        .btn-action { width: 100%; padding: 16px; border: none; border-radius: 12px; background: var(--primary); color: white; font-weight: bold; font-size: 16px; cursor: pointer; margin-top: 10px; }
-        .price-box { background: #f8f9fa; padding: 15px; border-radius: 12px; margin-top: 15px; text-align: center; border: 1px solid #eee; }
+        .btn-action { width: 100%; padding: 16px; border: none; border-radius: 12px; background: var(--primary); color: white; font-weight: bold; font-size: 16px; cursor: pointer; }
+        
         .section { display: none; }
         .active-section { display: block; }
-        #admin-modal { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:9999; overflow-y:auto; padding:20px; box-sizing:border-box; display:none; }
+        #admin-modal { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:9999; overflow-y:auto; padding:20px; display:none; }
     </style>
 </head>
 <body>
@@ -34,65 +39,79 @@
 </header>
 
 <div class="container">
-    <div id="map"></div>
 
-    <div class="nav-bar">
-        <button class="nav-btn active" onclick="showTab('tab-viaje', this)">🚕 Viaje</button>
-        <button class="nav-btn" onclick="showTab('tab-registro', this)">📝 Registro</button>
+    <div id="auth-container">
+        <div class="nav-bar">
+            <button class="nav-btn active" onclick="showTabAuth('tab-login', this)">Entrar</button>
+            <button class="nav-btn" onclick="showTabAuth('tab-registro', this)">Registrarse</button>
+        </div>
+
+        <div id="tab-login" class="section active-section">
+            <div class="card">
+                <h4>Iniciar Sesión</h4>
+                <input type="email" id="login-email" placeholder="Correo">
+                <input type="password" id="login-pass" placeholder="Contraseña">
+                <button class="btn-action" onclick="iniciarSesion()">INGRESAR</button>
+            </div>
+        </div>
+
+        <div id="tab-registro" class="section">
+            <div class="card">
+                <h4>Crear Cuenta</h4>
+                <select id="reg-tipo" onchange="toggleRegFields()">
+                    <option value="cliente">Soy Cliente</option>
+                    <option value="driver">Quiero ser Conductor</option>
+                </select>
+                <input type="text" id="reg-nombre" placeholder="Nombre Completo">
+                <input type="email" id="reg-email" placeholder="Correo Electrónico">
+                <input type="password" id="reg-pass" placeholder="Contraseña (Mín. 6 caracteres)">
+                <input type="tel" id="reg-telefono" placeholder="Teléfono">
+                <label style="font-size:11px;">Foto de Perfil:</label>
+                <input type="file" id="reg-foto" accept="image/*">
+
+                <div id="driver-docs" style="display:none; background:#f0f0f0; padding:10px; border-radius:10px;">
+                    <p style="font-size:11px; font-weight:bold;">DATOS DEL AUTO:</p>
+                    <input type="text" id="marca" placeholder="Marca (Ej: Toyota)">
+                    <input type="text" id="modelo" placeholder="Modelo">
+                    <input type="number" id="anio" placeholder="Año (Mín. 2014)" min="2014">
+                </div>
+                <button class="btn-action" id="btn-reg" onclick="procesarRegistro()">FINALIZAR REGISTRO</button>
+            </div>
+        </div>
     </div>
 
-    <div id="tab-viaje" class="section active-section">
+    <div id="app-container">
+        <div id="map"></div>
         <div class="card">
             <h4>Solicitar Transporte</h4>
-            <div style="display: flex; gap: 5px;">
+            <div style="display:flex; gap:5px;">
                 <input id="origin" placeholder="📍 Origen">
-                <button onclick="obtenerGPS()" style="background:var(--primary); border:none; border-radius:10px; padding:0 15px; color:white;">📍</button>
+                <button onclick="obtenerGPS()" style="background:var(--primary); border:none; border-radius:10px; color:white; padding:0 15px;">📍</button>
             </div>
             <input id="destination" placeholder="🏁 Destino">
-            <div id="info-recorrido" style="display:none;" class="price-box">
+            <div id="info-recorrido" style="display:none; text-align:center; padding:10px;">
                 <small>DISTANCIA: <b id="distText">0 km</b></small><br>
                 <b style="font-size: 24px;" id="priceText">$0.00</b>
-                <button class="btn-action" onclick="confirmarViaje()">PEDIR AHORA</button>
+                <button class="btn-action" onclick="alert('Buscando conductor...')">PEDIR AHORA</button>
             </div>
             <button id="btn-calc" class="btn-action" style="background:#444;" onclick="calculateRoute()">CALCULAR COSTO</button>
         </div>
+        <button class="btn-action" style="background:#c0392b;" onclick="cerrarSesion()">CERRAR SESIÓN</button>
     </div>
 
-    <div id="tab-registro" class="section">
-        <div class="card">
-            <h4>Registro de Usuario</h4>
-            <select id="reg-tipo" onchange="toggleRegFields()">
-                <option value="cliente">Soy Cliente</option>
-                <option value="driver">Quiero ser Conductor</option>
-            </select>
-            <input type="text" id="reg-nombre" placeholder="Nombre Completo">
-            <input type="tel" id="reg-telefono" placeholder="Teléfono">
-            <label style="font-size:12px; color:#666;">Foto de Perfil:</label>
-            <input type="file" id="reg-foto" accept="image/*">
-
-            <div id="driver-docs" style="display:none; background:#f9f9f9; padding:15px; border-radius:10px; border:1px dashed #ccc; margin-top:10px;">
-                <p style="font-size:12px; font-weight:bold; color:var(--secondary);">DOCUMENTACIÓN PERSONAL:</p>
-                <input type="file" id="doc-personal" multiple> 
-                <p style="font-size:12px; font-weight:bold; color:var(--secondary); margin-top:10px;">DATOS DEL AUTO:</p>
-                <input type="text" id="marca" placeholder="Marca">
-                <input type="text" id="modelo" placeholder="Modelo">
-                <input type="number" id="anio" placeholder="Año (Mín. 2014)" min="2014">
-            </div>
-            <button class="btn-action" id="btn-reg" onclick="procesarRegistro()">FINALIZAR REGISTRO</button>
-        </div>
-    </div>
 </div>
 
 <div id="admin-modal">
-    <button onclick="cerrarAdmin()" style="float:right; padding:10px; background:var(--primary); border:none; color:white; border-radius:5px;">CERRAR</button>
-    <h2 style="color:var(--primary)">ADMINISTRACIÓN DE RUNCAR</h2>
+    <button onclick="cerrarAdmin()" style="float:right; padding:10px; color:white;">CERRAR</button>
+    <h2 style="color:var(--primary)">ADMINISTRACIÓN</h2>
     <div id="admin-content"></div>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, getDocs, query, orderBy, where } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
     import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-storage.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-auth.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyAyRrBUmw4OEzS7EmvK_XmDk6Z5rrjLC3A",
@@ -106,14 +125,72 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const storage = getStorage(app);
+    const auth = getAuth(app);
 
-    // --- MAPA ---
+    // --- MANEJO DE SESIÓN ---
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            document.getElementById("auth-container").style.display = "none";
+            document.getElementById("app-container").style.display = "block";
+            initMap();
+        } else {
+            document.getElementById("auth-container").style.display = "block";
+            document.getElementById("app-container").style.display = "none";
+        }
+    });
+
+    window.iniciarSesion = async () => {
+        const email = document.getElementById("login-email").value;
+        const pass = document.getElementById("login-pass").value;
+        try {
+            await signInWithEmailAndPassword(auth, email, pass);
+        } catch(e) { alert("Error: Correo o contraseña incorrectos"); }
+    };
+
+    window.cerrarSesion = () => signOut(auth);
+
+    // --- REGISTRO ---
+    window.procesarRegistro = async () => {
+        const btn = document.getElementById("btn-reg");
+        const email = document.getElementById("reg-email").value;
+        const pass = document.getElementById("reg-pass").value;
+        const nombre = document.getElementById("reg-nombre").value;
+        const foto = document.getElementById("reg-foto").files[0];
+
+        if(!email || !pass || !foto) return alert("Faltan datos críticos");
+
+        btn.disabled = true; btn.innerText = "Creando cuenta...";
+        try {
+            const userCred = await createUserWithEmailAndPassword(auth, email, pass);
+            const user = userCred.user;
+            
+            const snap = await uploadBytes(ref(storage, `perfiles/${user.uid}`), foto);
+            const url = await getDownloadURL(snap.ref);
+
+            let data = {
+                uid: user.uid, nombre, email, rol: document.getElementById("reg-tipo").value,
+                fotoPerfil: url, telefono: document.getElementById("reg-telefono").value,
+                fecha: new Date(), estado: "pendiente"
+            };
+
+            if(data.rol === 'driver') {
+                data.vehiculo = {
+                    marca: document.getElementById("marca").value,
+                    modelo: document.getElementById("modelo").value,
+                    anio: document.getElementById("anio").value
+                };
+            }
+
+            await addDoc(collection(db, "usuarios"), data);
+            alert("¡Registro exitoso!");
+        } catch(e) { alert("Error: " + e.message); btn.disabled = false; }
+    };
+
+    // --- MAPA Y RUTAS ---
     let map, directionsService, directionsRenderer;
     window.initMap = () => {
         map = new google.maps.Map(document.getElementById("map"), {
-            center: { lat: 13.6893, lng: -89.1871 },
-            zoom: 13,
-            styles: [{ featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] }]
+            center: { lat: 13.6893, lng: -89.1871 }, zoom: 13
         });
         directionsService = new google.maps.DirectionsService();
         directionsRenderer = new google.maps.DirectionsRenderer({ map });
@@ -124,7 +201,6 @@
     window.calculateRoute = () => {
         const start = document.getElementById("origin").value;
         const end = document.getElementById("destination").value;
-        if (!start || !end) return alert("Ingresa origen y destino");
         directionsService.route({ origin: start, destination: end, travelMode: 'DRIVING' }, (res, status) => {
             if (status === 'OK') {
                 directionsRenderer.setDirections(res);
@@ -138,74 +214,11 @@
         });
     };
 
-    // --- REGISTRO ---
-    window.procesarRegistro = async () => {
-        const btn = document.getElementById("btn-reg");
-        const nombre = document.getElementById("reg-nombre").value;
-        const tipo = document.getElementById("reg-tipo").value;
-        const fotoFile = document.getElementById("reg-foto").files[0];
-
-        if(!nombre || !fotoFile) return alert("Nombre y foto son obligatorios");
-
-        btn.disabled = true; btn.innerText = "Registrando...";
-        try {
-            const snap = await uploadBytes(ref(storage, `users/${Date.now()}`), fotoFile);
-            const url = await getDownloadURL(snap.ref);
-            
-            let data = {
-                nombre, rol: tipo, fotoPerfil: url, 
-                telefono: document.getElementById("reg-telefono").value, 
-                fecha: new Date(), estado: "pendiente"
-            };
-
-            if(tipo === 'driver') {
-                data.vehiculo = {
-                    marca: document.getElementById("marca").value,
-                    modelo: document.getElementById("modelo").value,
-                    anio: document.getElementById("anio").value
-                };
-            }
-
-            await addDoc(collection(db, "usuarios"), data);
-            alert("¡Registro enviado!"); location.reload();
-        } catch(e) { alert("Error: " + e.message); btn.disabled = false; }
-    };
-
-    // --- ADMIN ---
-    window.cargarUsuariosAdmin = async () => {
-        const content = document.getElementById("admin-content");
-        content.innerHTML = "<p>Cargando...</p>";
-        try {
-            const snap = await getDocs(query(collection(db, "usuarios"), orderBy("fecha", "desc")));
-            let html = `<table style="width:100%; background:white; color:#333; border-collapse:collapse; font-size:12px;">
-                <tr style="background:var(--primary); color:white;">
-                    <th style="padding:10px;">Perfil</th><th>Datos</th><th>Rol</th><th>Vehículo</th>
-                </tr>`;
-            snap.forEach(doc => {
-                const u = doc.data();
-                html += `<tr style="border-bottom:1px solid #eee;">
-                    <td style="padding:10px;"><img src="${u.fotoPerfil}" width="40" style="border-radius:50%"></td>
-                    <td><b>${u.nombre}</b><br>${u.telefono || ''}</td>
-                    <td>${u.rol.toUpperCase()}</td>
-                    <td>${u.vehiculo ? u.vehiculo.marca + ' ' + u.vehiculo.modelo : '---'}</td>
-                </tr>`;
-            });
-            content.innerHTML = html + "</table>";
-        } catch(e) { content.innerHTML = e.message; }
-    };
-
-    window.addEventListener('keydown', (e) => { 
-        if (e.key.toLowerCase() === 'w') {
-            document.getElementById("admin-modal").style.display = "block";
-            cargarUsuariosAdmin();
-        }
-    });
-
     // --- UTILIDADES ---
-    window.showTab = (id, btn) => {
-        document.querySelectorAll('.section').forEach(s => s.classList.remove('active-section'));
+    window.showTabAuth = (id, btn) => {
+        document.querySelectorAll('#auth-container .section').forEach(s => s.classList.remove('active-section'));
         document.getElementById(id).classList.add('active-section');
-        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('#auth-container .nav-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
     };
     window.obtenerGPS = () => navigator.geolocation.getCurrentPosition(p => { 
@@ -213,7 +226,7 @@
     });
     window.toggleRegFields = () => document.getElementById("driver-docs").style.display = document.getElementById("reg-tipo").value === 'driver' ? 'block' : 'none';
     window.cerrarAdmin = () => document.getElementById("admin-modal").style.display = "none";
-    window.onload = initMap;
+    window.addEventListener('keydown', (e) => { if(e.key === 'w') document.getElementById("admin-modal").style.display = "block"; });
 </script>
 </body>
 </html>
