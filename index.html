@@ -222,21 +222,53 @@
     };
 
     window.calcularRuta = () => {
-        const o = document.getElementById("origin").value;
-        const d = document.getElementById("destination").value;
-        ds.route({ origin:o, destination:d, travelMode:'DRIVING' }, (res, status) => {
-            if(status === 'OK') {
-                dr.setDirections(res);
-                const km = res.routes[0].legs[0].distance.value / 1000;
-                pBase = km <= 3 ? 3.00 : 3 + (km-3)*0.30;
-                document.getElementById("priceMaps").innerText = "$" + pBase.toFixed(2);
-                document.getElementById("oferta-cliente").value = pBase.toFixed(2);
-                document.getElementById("precio-area").style.display = 'block';
-                document.getElementById("btn-calc").style.display = 'none';
-            }
-        });
-    };
+    const o = document.getElementById("origin").value;
+    const d = document.getElementById("destination").value;
 
+    // Validación de campos vacíos
+    if (!o || !d) {
+        alert("Por favor, selecciona origen y destino de las sugerencias de Google.");
+        return;
+    }
+
+    ds.route({ 
+        origin: o, 
+        destination: d, 
+        travelMode: 'DRIVING' 
+    }, (res, status) => {
+        if (status === 'OK') {
+            dr.setDirections(res);
+            const km = res.routes[0].legs[0].distance.value / 1000;
+            let pFinal = 0;
+
+            // --- Lógica Solicitada ---
+            if (km < 4) {
+                // 1km = $1, 2km = $2, 3km = $3 (Lineal)
+                pFinal = km; 
+            } else {
+                // A partir de 4km: $3 base + (# de km * $0.30)
+                pFinal = 3 + (km * 0.30);
+            }
+            // -------------------------
+
+            // Mostrar resultados en el HTML
+            document.getElementById("priceMaps").innerText = "$" + pFinal.toFixed(2);
+            document.getElementById("oferta-cliente").value = pFinal.toFixed(2);
+            document.getElementById("precio-area").style.display = 'block';
+            document.getElementById("btn-calc").style.display = 'none';
+
+            // Opcional: mostrar tiempo estimado
+            if(document.getElementById("timeEst")) {
+                document.getElementById("timeEst").innerText = "Tiempo: " + res.routes[0].legs[0].duration.text;
+            }
+
+        } else {
+            // Esto te avisará si la API de Google está fallando
+            alert("No se pudo calcular el precio. Error de Google: " + status);
+            console.error("Error en DirectionsService:", status);
+        }
+    });
+};
     window.publicarViaje = async () => {
         await addDoc(collection(db, "viajes"), {
             cliente: auth.currentUser.uid,
