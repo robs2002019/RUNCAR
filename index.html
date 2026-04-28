@@ -3,21 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RUNCAR - Oficial</title>
+    <title>RUNCAR</title>
+    
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDj2kkjVmMqJSWN4OVbue2jPOidhGO2GOU&libraries=places,geometry"></script>
+
     <style>
         :root { --primary: #2ecc71; --secondary: #1a1a1a; --accent: #f1c40f; --white: #ffffff; }
         body { font-family: 'Segoe UI', sans-serif; margin: 0; background: var(--secondary); color: white; padding-bottom: 50px; }
         .container { max-width: 500px; margin: auto; padding: 15px; }
         header { text-align: center; padding: 20px; background: rgba(0,0,0,0.3); border-radius: 0 0 25px 25px; border-bottom: 2px solid var(--primary); margin-bottom: 20px; }
+        
         .card { background: var(--white); color: #333; border-radius: 20px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); margin-bottom: 15px; }
         input, select { width: 100%; padding: 14px; margin: 8px 0; border: 1px solid #ddd; border-radius: 10px; font-size: 15px; box-sizing: border-box; }
         .btn-action { width: 100%; padding: 16px; border: none; border-radius: 12px; background: var(--primary); color: white; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        .btn-action:hover { opacity: 0.9; }
-        #map { width: 100%; height: 280px; border-radius: 20px; margin-bottom: 15px; border: 2px solid var(--primary); background: #222; }
+        
+        #map { width: 100%; height: 250px; border-radius: 20px; margin-bottom: 15px; border: 2px solid var(--primary); background: #222; }
         .section { display: none; }
         .active-section { display: block; }
-        .price-text { color: var(--primary); font-size: 28px; font-weight: bold; }
-        .pac-container { border-radius: 10px; z-index: 9999 !important; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+
+        /* Estilos Negociación */
+        .oferta-tag { background: #f9f9f9; padding: 15px; border-radius: 12px; margin: 10px 0; border-left: 5px solid var(--primary); display: flex; justify-content: space-between; align-items: center; }
+        .price-text { color: var(--primary); font-size: 18px; font-weight: bold; }
+        .file-box { background: #f0f0f0; padding: 10px; border-radius: 10px; font-size: 12px; margin: 5px 0; border: 1px dashed #ccc; }
     </style>
 </head>
 <body>
@@ -27,49 +34,68 @@
 </header>
 
 <div class="container">
+
     <div id="auth-container" class="section active-section">
         <div class="card">
-            <h3 style="margin-top:0; text-align:center;">Bienvenido a RUNCAR</h3>
+            <h3 id="auth-title" style="margin-top:0; text-align:center;">Bienvenido</h3>
             <input type="email" id="auth-email" placeholder="Correo Electrónico">
             <input type="password" id="auth-pass" placeholder="Contraseña">
+            
             <div id="reg-fields" style="display:none;">
                 <input type="text" id="reg-nombre" placeholder="Nombre Completo">
-                <input type="tel" id="reg-tel" placeholder="WhatsApp">
-                <select id="reg-rol">
+                
+                <div style="display:flex; gap:5px;">
+                    <select id="reg-pais" style="flex:1;">
+                        <option value="">Cargando países...</option>
+                    </select>
+                    <input type="tel" id="reg-tel" placeholder="WhatsApp" style="flex:2;">
+                </div>
+
+                <div class="file-box"><label>Foto de Perfil</label><input type="file" id="foto-perfil"></div>
+                
+                <select id="reg-rol" onchange="toggleDriverReg()">
                     <option value="cliente">Soy Cliente</option>
                     <option value="driver">Quiero ser Conductor</option>
                 </select>
+
+                <div id="driver-docs" style="display:none; border-top:1px solid #eee; margin-top:10px;">
+                    <h5 style="color:var(--primary)">Documentos y Vehículo</h5>
+                    <div class="file-box"><label>DUI, Licencia y Antecedentes (Fotos)</label><input type="file" multiple></div>
+                    <input type="text" id="car-marca" placeholder="Marca y Modelo">
+                    <select id="car-anio"></select>
+                    <div class="file-box"><label>Fotos del Auto (Mínimo 5)</label><input type="file" multiple></div>
+                </div>
             </div>
-            <button class="btn-action" onclick="window.ejecutarAuth()">CONTINUAR</button>
-            <p onclick="window.switchAuth()" style="text-align:center; cursor:pointer; color:#666; margin-top:18px;">¿Nuevo aquí? Regístrate</p>
+
+            <button class="btn-action" onclick="ejecutarAuth()" id="btn-auth-main">INGRESAR</button>
+            <p onclick="switchAuth()" id="toggle-text" style="text-align:center; font-size:16px; cursor:pointer; color:#666; margin-top:18px;">¿No tienes cuenta? Regístrate aquí</p>
         </div>
     </div>
 
     <div id="cliente-view" class="section">
         <div id="map"></div>
         <div class="card">
-            <h4>¿A dónde vas hoy?</h4>
-            <input id="origin" placeholder="📍 Ubicación actual (Cargando...)" autocomplete="off">
-            <input id="destination" placeholder="🏁 ¿A dónde vas?" autocomplete="off">
+            <h4>Solicitar Viaje</h4>
+            <input id="origin" placeholder="📍 Origen">
+            <input id="destination" placeholder="🏁 Destino">
             
-            <div id="precio-area" style="display:none; text-align:center; margin-top:15px;">
-                <p style="margin:0; color:#666;">Tarifa estimada</p>
-                <div id="priceMaps" class="price-text">$0.00</div>
-                <p id="timeEst" style="font-size:13px; color:#999; margin-bottom:15px;"></p>
-                <input type="number" id="oferta-cliente" style="font-size:20px; text-align:center; border: 2px solid var(--primary);">
-                <button class="btn-action" onclick="window.publicarViaje()">CONFIRMAR SOLICITUD</button>
+            <div id="precio-area" style="display:none; text-align:center;">
+                <p>Tarifa sugerida: <b id="priceMaps">$0.00</b></p>
+                <input type="number" id="oferta-cliente" style="font-size:25px; text-align:center; color:var(--primary); font-weight:bold;">
+                <button class="btn-action" onclick="publicarViaje()">PUBLICAR OFERTA</button>
             </div>
-            
-            <button id="btn-calc" class="btn-action" style="background:#444;" onclick="window.calcularRuta()">CALCULAR PRECIO</button>
+            <button id="btn-calc" class="btn-action" style="background:#444;" onclick="calcularRuta()">CALCULAR PRECIO</button>
         </div>
+        <h4>Propuestas de Conductores</h4>
+        <div id="lista-ofertas"></div>
     </div>
 
     <div id="driver-view" class="section">
-        <h4 style="color:var(--primary)">Solicitudes de viaje</h4>
+        <h4 style="color:var(--primary)">Viajes disponibles</h4>
         <div id="lista-viajes-global"></div>
     </div>
 
-    <button id="btn-logout" class="btn-action" style="display:none; background:#c0392b; margin-top:20px;" onclick="window.cerrarSesion()">CERRAR SESIÓN</button>
+    <button id="btn-logout" class="btn-action" style="display:none; background:#c0392b; margin-top:20px;" onclick="cerrarSesion()">CERRAR SESIÓN</button>
 </div>
 
 <script type="module">
@@ -90,96 +116,71 @@
     const db = getFirestore(app);
     const auth = getAuth(app);
 
-    let ds, dr, mapa, geocoder;
+    // --- CARGAR PAÍSES DEL MUNDO ---
+    async function cargarPaises() {
+        const selectPais = document.getElementById('reg-pais');
+        try {
+            const response = await fetch('https://restcountries.com/v3.1/all?fields=name,idd,flag,cca2');
+            const countries = await response.json();
+            selectPais.innerHTML = ''; 
 
-    // --- 1. INICIALIZAR MAPA Y UBICACIÓN ACTUAL ---
-    window.initMap = () => {
-        const mapDiv = document.getElementById("map");
-        if (!mapDiv) return;
+            countries.sort((a, b) => a.name.common.localeCompare(b.name.common));
 
-        ds = new google.maps.DirectionsService();
-        dr = new google.maps.DirectionsRenderer();
-        geocoder = new google.maps.Geocoder();
-        
-        mapa = new google.maps.Map(mapDiv, {
-            center: { lat: 13.6929, lng: -89.2182 },
-            zoom: 15,
-            disableDefaultUI: true
-        });
-        dr.setMap(mapa);
-
-        // Autocompletado manual
-        const options = { componentRestrictions: { country: "sv" }, fields: ["geometry", "formatted_address"] };
-        new google.maps.places.Autocomplete(document.getElementById("origin"), options);
-        new google.maps.places.Autocomplete(document.getElementById("destination"), options);
-
-        // GEOLOCALIZACIÓN PARA PUNTO A
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition((position) => {
-                const pos = { lat: position.coords.latitude, lng: position.coords.longitude };
-                mapa.setCenter(pos);
-                
-                // Convertir coordenadas a nombre de calle
-                geocoder.geocode({ location: pos }, (results, status) => {
-                    if (status === "OK" && results[0]) {
-                        document.getElementById("origin").value = results[0].formatted_address;
-                    }
-                });
-            }, () => console.log("GPS desactivado por el usuario"));
-        }
-    };
-
-    // --- 2. LÓGICA DE PRECIOS INTEGRADA ---
-    window.calcularRuta = () => {
-        const o = document.getElementById("origin").value;
-        const d = document.getElementById("destination").value;
-
-        if(!o || !d) return alert("Por favor, selecciona origen y destino.");
-
-        ds.route({ origin: o, destination: d, travelMode: 'DRIVING' }, (res, status) => {
-            if(status === 'OK') {
-                dr.setDirections(res);
-                const leg = res.routes[0].legs[0];
-                const km = leg.distance.value / 1000;
-                
-                let precio = 0;
-                // REGLA: <4km lineal ($1xkm), >=4km ($3 base + km*0.30)
-                if (km < 4) {
-                    precio = km; 
-                } else {
-                    precio = 3 + (km * 0.30);
+            countries.forEach(country => {
+                if (country.idd.root) {
+                    const dialCode = country.idd.root + (country.idd.suffixes ? country.idd.suffixes[0] : "");
+                    const option = document.createElement('option');
+                    option.value = dialCode;
+                    option.textContent = `${country.flag} ${country.name.common} (${dialCode})`;
+                    
+                    // Predeterminado El Salvador
+                    if(country.cca2 === 'SV') option.selected = true;
+                    selectPais.appendChild(option);
                 }
+            });
+        } catch (e) {
+            selectPais.innerHTML = '<option value="+503">🇸🇻 El Salvador (+503)</option>';
+        }
+    }
+    cargarPaises();
 
-                document.getElementById("priceMaps").innerText = "$" + precio.toFixed(2);
-                document.getElementById("oferta-cliente").value = precio.toFixed(2);
-                document.getElementById("timeEst").innerText = "Aprox. " + leg.duration.text + " de camino";
-                document.getElementById("precio-area").style.display = 'block';
-                document.getElementById("btn-calc").style.display = 'none';
-            } else {
-                alert("Error de Google: " + status + ". Verifica que la Directions API esté activa.");
-            }
-        });
+    let isReg = false;
+    let pBase = 0;
+
+    window.cerrarSesion = async () => {
+        try {
+            await signOut(auth);
+            alert("Sesión cerrada correctamente");
+            location.reload(); 
+        } catch (error) { alert("Error al cerrar sesión"); }
     };
 
-    // --- 3. LÓGICA FIREBASE (AUTH) ---
     window.switchAuth = () => {
-        const reg = document.getElementById('reg-fields');
-        reg.style.display = reg.style.display === 'none' ? 'block' : 'none';
+        isReg = !isReg;
+        document.getElementById('reg-fields').style.display = isReg ? 'block' : 'none';
+        document.getElementById('btn-auth-main').innerText = isReg ? 'CREAR CUENTA' : 'INGRESAR';
     };
+
+    window.toggleDriverReg = () => {
+        document.getElementById('driver-docs').style.display = document.getElementById('reg-rol').value === 'driver' ? 'block' : 'none';
+    };
+
+    const carAnio = document.getElementById('car-anio');
+    for(let i=2027; i>=2014; i--) { carAnio.options.add(new Option(i, i)); }
 
     window.ejecutarAuth = async () => {
         const mail = document.getElementById('auth-email').value;
         const pass = document.getElementById('auth-pass').value;
-        const isRegistering = document.getElementById('reg-fields').style.display !== 'none';
-
         try {
-            if(isRegistering) {
+            if(isReg) {
                 const uc = await createUserWithEmailAndPassword(auth, mail, pass);
                 await addDoc(collection(db, "usuarios"), {
                     uid: uc.user.uid,
                     rol: document.getElementById('reg-rol').value,
-                    nombre: document.getElementById('reg-nombre').value
+                    nombre: document.getElementById('reg-nombre').value,
+                    whatsapp: document.getElementById('reg-pais').value + document.getElementById('reg-tel').value
                 });
+                alert("Registro completado.");
             } else {
                 await signInWithEmailAndPassword(auth, mail, pass);
             }
@@ -192,18 +193,105 @@
             document.getElementById('btn-logout').style.display = 'block';
             const q = query(collection(db, "usuarios"), where("uid", "==", user.uid));
             const snap = await getDocs(q);
+            
+            document.getElementById('cliente-view').classList.remove('active-section');
+            document.getElementById('driver-view').classList.remove('active-section');
+
             snap.forEach(d => {
                 if(d.data().rol === 'cliente') {
                     document.getElementById('cliente-view').classList.add('active-section');
-                    if(window.google) window.initMap();
+                    initMap();
+                    escucharOfertas();
                 } else {
                     document.getElementById('driver-view').classList.add('active-section');
+                    escucharViajes();
                 }
             });
+        } else {
+            document.getElementById('auth-container').style.display = 'block';
+            document.getElementById('btn-logout').style.display = 'none';
         }
     });
 
-    window.cerrarSesion = () => signOut(auth).then(() => location.reload());
-</script>
+    let ds, dr;
+    window.initMap = () => {
+        ds = new google.maps.DirectionsService();
+        dr = new google.maps.DirectionsRenderer({ map: new google.maps.Map(document.getElementById("map"), { center: {lat:13.6, lng:-89.2}, zoom:12 }) });
+        new google.maps.places.Autocomplete(document.getElementById("origin"));
+        new google.maps.places.Autocomplete(document.getElementById("destination"));
+    };
 
-<script src="https://maps.googleapis
+    window.calcularRuta = () => {
+        const o = document.getElementById("origin").value;
+        const d = document.getElementById("destination").value;
+        ds.route({ origin:o, destination:d, travelMode:'DRIVING' }, (res, status) => {
+            if(status === 'OK') {
+                dr.setDirections(res);
+                const km = res.routes[0].legs[0].distance.value / 1000;
+                pBase = km <= 3 ? 3.00 : 3 + (km-3)*0.30;
+                document.getElementById("priceMaps").innerText = "$" + pBase.toFixed(2);
+                document.getElementById("oferta-cliente").value = pBase.toFixed(2);
+                document.getElementById("precio-area").style.display = 'block';
+                document.getElementById("btn-calc").style.display = 'none';
+            }
+        });
+    };
+
+    window.publicarViaje = async () => {
+        await addDoc(collection(db, "viajes"), {
+            cliente: auth.currentUser.uid,
+            origen: document.getElementById("origin").value,
+            destino: document.getElementById("destination").value,
+            oferta: document.getElementById("oferta-cliente").value,
+            estado: "abierto",
+            fecha: serverTimestamp()
+        });
+        alert("Buscando conductores...");
+    };
+
+    function escucharViajes() {
+        onSnapshot(query(collection(db, "viajes"), where("estado", "==", "abierto")), (snap) => {
+            let h = "";
+            snap.forEach(d => {
+                const v = d.data();
+                h += `<div class="card">
+                    <small>${v.origen} → ${v.destino}</small>
+                    <p>Ofrece: <b class="price-text">$${v.oferta}</b></p>
+                    <input type="number" id="c-${d.id}" placeholder="Tu contraoferta $">
+                    <button class="btn-action" onclick="enviarContraoferta('${d.id}')">ENVIAR PRECIO</button>
+                </div>`;
+            });
+            document.getElementById("lista-viajes-global").innerHTML = h || "Esperando solicitudes...";
+        });
+    }
+
+    window.enviarContraoferta = async (id) => {
+        const val = document.getElementById(`c-${id}`).value;
+        const viajeRef = (await getDocs(query(collection(db, "viajes")))).docs.find(x => x.id === id);
+        await addDoc(collection(db, "ofertas"), {
+            viajeId: id,
+            driver: auth.currentUser.uid,
+            precio: val,
+            clienteId: viajeRef.data().cliente
+        });
+        alert("Oferta enviada.");
+    };
+
+    function escucharOfertas() {
+        onSnapshot(query(collection(db, "ofertas"), where("clienteId", "==", auth.currentUser.uid)), (snap) => {
+            let h = "";
+            snap.forEach(d => {
+                const o = d.data();
+                h += `<div class="oferta-tag">
+                    <span>Conductor ofrece: <b class="price-text">$${o.precio}</b></span>
+                    <button class="btn-action" style="width:auto; padding:10px;" onclick="confirmar()">ACEPTAR</button>
+                </div>`;
+            });
+            document.getElementById("lista-ofertas").innerHTML = h;
+        });
+    }
+
+    window.confirmar = () => alert("¡Viaje confirmado!");
+</script>
+</body>
+</html>
