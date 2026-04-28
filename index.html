@@ -23,7 +23,7 @@
         .active-section { display: block; }
 
         .oferta-tag { background: #f9f9f9; padding: 15px; border-radius: 12px; margin: 10px 0; border-left: 5px solid var(--primary); display: flex; justify-content: space-between; align-items: center; }
-        .price-text { color: var(--primary); font-size: 18px; font-weight: bold; }
+        .price-text { color: var(--primary); font-size: 22px; font-weight: bold; }
         
         #mensajes-box { height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 10px; background: #eee; border-radius: 10px; margin-bottom: 10px; }
         .msg-mio { background: var(--primary); color: white; align-self: flex-end; padding: 10px; border-radius: 15px 15px 0 15px; max-width: 80%; }
@@ -118,7 +118,6 @@
     let isReg = false;
     let chatIdActivo = null;
 
-    // --- AUTENTICACIÓN ---
     window.switchAuth = () => {
         isReg = !isReg;
         document.getElementById('reg-fields').style.display = isReg ? 'block' : 'none';
@@ -164,7 +163,6 @@
         }
     });
 
-    // --- MAPAS ---
     let ds, dr;
     window.initMap = () => {
         ds = new google.maps.DirectionsService();
@@ -189,7 +187,6 @@
         });
     };
 
-    // --- LÓGICA DE NEGOCIACIÓN ---
     window.publicarViaje = async () => {
         await addDoc(collection(db, "viajes"), {
             cliente: auth.currentUser.uid,
@@ -199,7 +196,7 @@
             estado: "abierto",
             fecha: serverTimestamp()
         });
-        alert("Solicitud publicada. Espera ofertas...");
+        alert("Solicitud publicada!");
     };
 
     function escucharViajes() {
@@ -210,47 +207,54 @@
                 h += `<div class="card">
                     <p><b>Ruta:</b> ${v.origen} ➔ ${v.destino}</p>
                     <p><b>Paga:</b> <span class="price-text">$${v.oferta}</span></p>
-                    <input type="number" id="c-${d.id}" placeholder="Tu contraoferta $">
-                    <button class="btn-action" onclick="enviarContraoferta('${d.id}', '${v.cliente}')">ENVIAR PRECIO</button>
+                    <input type="number" id="c-${d.id}" placeholder="Tu precio $">
+                    <button class="btn-action" onclick="enviarContraoferta('${d.id}', '${v.cliente}')">ENVIAR CONTRAOFERTA</button>
                 </div>`;
             });
-            document.getElementById("lista-viajes-global").innerHTML = h || "Esperando nuevos viajes...";
+            document.getElementById("lista-viajes-global").innerHTML = h || "Esperando viajes...";
         });
     }
 
+    // --- MEJORA: ENVIAR CONTRAOFERTA CON FORMATO ---
     window.enviarContraoferta = async (viajeId, clienteId) => {
         const p = document.getElementById(`c-${viajeId}`).value;
-        if(!p) return alert("Ingresa un precio");
+        if(!p || p <= 0) return alert("Ingresa un precio válido");
+        
         await addDoc(collection(db, "ofertas"), {
             viajeId: viajeId,
             driver: auth.currentUser.uid,
-            precio: p,
+            precio: parseFloat(p).toFixed(2), // Guardamos con decimales
             clienteId: clienteId,
-            estado: "pendiente"
+            estado: "pendiente",
+            fecha: serverTimestamp()
         });
-        alert("Oferta enviada al cliente.");
+        alert("Oferta enviada!");
+        document.getElementById(`c-${viajeId}`).value = "";
     };
 
+    // --- MEJORA: ESCUCHAR OFERTAS Y MOSTRAR CANTIDAD ---
     function escucharOfertas() {
-        onSnapshot(query(collection(db, "ofertas"), where("clienteId", "==", auth.currentUser.uid), where("estado", "==", "pendiente")), (snap) => {
+        const q = query(collection(db, "ofertas"), where("clienteId", "==", auth.currentUser.uid), where("estado", "==", "pendiente"));
+        onSnapshot(q, (snap) => {
             let h = "";
             snap.forEach(d => {
                 const o = d.data();
                 h += `<div class="oferta-tag">
-                    <span>Conductor ofrece: <b>$${o.precio}</b></span>
+                    <div>
+                        <small>Conductor ofrece:</small><br>
+                        <b class="price-text">$${o.precio}</b>
+                    </div>
                     <button class="btn-action" style="width:auto; padding:8px 15px;" onclick="aceptarOferta('${o.viajeId}', '${d.id}')">ACEPTAR</button>
                 </div>`;
             });
-            document.getElementById("lista-ofertas").innerHTML = h;
-        });
+            document.getElementById("lista-ofertas").innerHTML = h || "<p style='color:gray;text-align:center;'>Esperando ofertas...</p>";
+        }, (err) => console.error("Error: Si ves un link de Firebase aquí, haz clic para crear el índice."));
     }
 
     window.aceptarOferta = async (viajeId, ofertaId) => {
-        try {
-            await updateDoc(doc(db, "viajes", viajeId), { estado: "aceptado" });
-            await updateDoc(doc(db, "ofertas", ofertaId), { estado: "aceptada" });
-            abrirChat(viajeId, "Conductor");
-        } catch(e) { console.log(e); }
+        await updateDoc(doc(db, "viajes", viajeId), { estado: "aceptado" });
+        await updateDoc(doc(db, "ofertas", ofertaId), { estado: "aceptada" });
+        abrirChat(viajeId, "Conductor");
     };
 
     function escucharMisAceptaciones() {
@@ -259,16 +263,14 @@
             snap.forEach(d => {
                 const o = d.data();
                 h += `<div class="card" style="border: 2px solid var(--primary);">
-                    <p>✅ ¡Oferta de $${o.precio} aceptada!</p>
-                    <button class="btn-action" onclick="abrirChat('${o.viajeId}', 'Cliente')">HABLAR CON CLIENTE</button>
+                    <p>✅ ¡Aceptaron tu oferta de $${o.precio}!</p>
+                    <button class="btn-action" onclick="abrirChat('${o.viajeId}', 'Cliente')">CHAT CON CLIENTE</button>
                 </div>`;
-                if(!d.metadata.hasPendingWrites) alert("¡Tu oferta fue aceptada!");
             });
             document.getElementById("mis-chats-driver").innerHTML = h;
         });
     }
 
-    // --- CHAT ---
     window.abrirChat = (id, conQuien) => {
         chatIdActivo = id;
         document.getElementById('chat-titulo').innerText = "Chat con " + conQuien;
@@ -279,7 +281,7 @@
 
     window.enviarMensaje = async () => {
         const txt = document.getElementById('msg-input').value;
-        if(!txt || !chatIdActivo) return;
+        if(!txt) return;
         await addDoc(collection(db, "mensajes"), {
             viajeId: chatIdActivo,
             remitente: auth.currentUser.uid,
@@ -290,15 +292,11 @@
     };
 
     function escucharMensajes(id) {
-        // Quitamos orderBy momentáneamente para evitar errores de índice
-        const q = query(collection(db, "mensajes"), where("viajeId", "==", id));
-        onSnapshot(q, (snap) => {
-            let h = "";
+        onSnapshot(query(collection(db, "mensajes"), where("viajeId", "==", id)), (snap) => {
             let msgs = [];
             snap.forEach(d => msgs.push(d.data()));
-            // Ordenar manualmente por fecha si el serverTimestamp ya llegó
             msgs.sort((a,b) => (a.fecha?.seconds || 0) - (b.fecha?.seconds || 0));
-            
+            let h = "";
             msgs.forEach(m => {
                 const clase = m.remitente === auth.currentUser.uid ? "msg-mio" : "msg-otro";
                 h += `<div class="${clase}">${m.texto}</div>`;
@@ -310,7 +308,6 @@
     }
 
     window.cerrarSesion = () => signOut(auth).then(() => location.reload());
-
 </script>
 </body>
 </html>
