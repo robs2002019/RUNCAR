@@ -154,8 +154,8 @@
             const distanciaTexto = result.routes[0].legs[0].distance.value; // Distancia en metros
             const km = distanciaTexto / 1000;
             
-            // Lógica de cobro: $3 base + $0.35 por km extra
-            let costo = km <= 3 ? 3.00 : 3 + (km - 3) * 0.35;
+            // Lógica de cobro: $3 base + $0.30 por km extra
+            let costo = km <= 3 ? 3.00 : 3 + (km - 3) * 0.30;
 
             document.getElementById("priceMaps").innerText = "$" + costo.toFixed(2);
             document.getElementById("precio-area").style.display = "block";
