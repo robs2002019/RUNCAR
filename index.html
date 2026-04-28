@@ -272,4 +272,45 @@
     window.abrirChat = (id, conQuien) => {
         chatIdActivo = id;
         document.getElementById('chat-titulo').innerText = "Chat con " + conQuien;
-        document.querySelectorAll('.section').
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active-section'));
+        document.getElementById('chat-view').classList.add('active-section');
+        escucharMensajes(id);
+    };
+
+    window.enviarMensaje = async () => {
+        const txt = document.getElementById('msg-input').value;
+        if(!txt || !chatIdActivo) return;
+        await addDoc(collection(db, "mensajes"), {
+            viajeId: chatIdActivo,
+            remitente: auth.currentUser.uid,
+            texto: txt,
+            fecha: serverTimestamp()
+        });
+        document.getElementById('msg-input').value = "";
+    };
+
+    function escucharMensajes(id) {
+        // Quitamos orderBy momentáneamente para evitar errores de índice
+        const q = query(collection(db, "mensajes"), where("viajeId", "==", id));
+        onSnapshot(q, (snap) => {
+            let h = "";
+            let msgs = [];
+            snap.forEach(d => msgs.push(d.data()));
+            // Ordenar manualmente por fecha si el serverTimestamp ya llegó
+            msgs.sort((a,b) => (a.fecha?.seconds || 0) - (b.fecha?.seconds || 0));
+            
+            msgs.forEach(m => {
+                const clase = m.remitente === auth.currentUser.uid ? "msg-mio" : "msg-otro";
+                h += `<div class="${clase}">${m.texto}</div>`;
+            });
+            const box = document.getElementById("mensajes-box");
+            box.innerHTML = h;
+            box.scrollTop = box.scrollHeight;
+        });
+    }
+
+    window.cerrarSesion = () => signOut(auth).then(() => location.reload());
+
+</script>
+</body>
+</html>
