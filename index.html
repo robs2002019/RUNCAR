@@ -135,34 +135,45 @@
     };
 
     // --- CALCULAR RUTA Y COSTO ---
-  window.calcularRuta = () => {
-    const origen = document.getElementById("origin").value;
-    const destino = document.getElementById("destination").value;
+ window.calcularRuta = () => {
+    const o = document.getElementById("origin").value;
+    const d = document.getElementById("destination").value;
 
-    if (!origen || !destino) {
-        alert("Por favor, selecciona una dirección sugerida por Google");
-        return;
-    }
+    if(!o || !d) return alert("Por favor selecciona las direcciones de la lista.");
 
     ds.route({
-        origin: origen,
-        destination: destino,
-        travelMode: google.maps.TravelMode.DRIVING
-    }, (result, status) => {
-        if (status === 'OK') {
-            dr.setDirections(result); // Esto dibuja la línea
-            const distanciaTexto = result.routes[0].legs[0].distance.value; // Distancia en metros
-            const km = distanciaTexto / 1000;
+        origin: o,
+        destination: d,
+        travelMode: 'DRIVING',
+        drivingOptions: {
+            departureTime: new Date(Date.now()),
+            trafficModel: 'best_guess'
+        }
+    }, (res, status) => {
+        if(status === 'OK') {
+            dr.setDirections(res);
+            const leg = res.routes[0].legs[0];
+            const km = leg.distance.value / 1000; // Distancia real en kilómetros
             
-            // Lógica de cobro: $3 base + $0.30 por km extra
-            let costo = km <= 3 ? 3.00 : 3 + (km - 3) * 0.30;
+            let precioCalculado = 0;
 
-            document.getElementById("priceMaps").innerText = "$" + costo.toFixed(2);
-            document.getElementById("precio-area").style.display = "block";
+            // --- NUEVA LÓGICA DE COSTO ---
+            if (km < 4) {
+                // 1km = $1, 2km = $2, 3km = $3 (Costo lineal)
+                precioCalculado = km; 
+            } else {
+                // A partir de 4km: Base $3 + (km totales * $0.30)
+                precioCalculado = 3 + (km * 0.30);
+            }
+            // -----------------------------
+
+            document.getElementById("priceMaps").innerText = "$" + precioCalculado.toFixed(2);
+            document.getElementById("timeEst").innerText = "Llegarás en aprox. " + leg.duration.text;
+            document.getElementById("oferta-cliente").value = precioCalculado.toFixed(2);
+            document.getElementById("precio-area").style.display = 'block';
+            document.getElementById("btn-calc").style.display = 'none';
         } else {
-            // ESTO TE DIRÁ POR QUÉ NO FUNCIONA
-            console.error("Fallo de Google Maps:", status);
-            alert("Google no pudo calcular la ruta: " + status);
+            alert("Error de Google Maps: " + status + ". Verifica que la Directions API esté activa en tu consola de Google.");
         }
     });
 };
