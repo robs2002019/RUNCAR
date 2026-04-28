@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RUNCAR PRO</title>
+    <title>RUNCAR PRO - Global</title>
     
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDj2kkjVmMqJSWN4OVbue2jPOidhGO2GOU&libraries=places,geometry"></script>
 
@@ -16,7 +16,6 @@
         .card { background: var(--white); color: #333; border-radius: 20px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); margin-bottom: 15px; }
         input, select { width: 100%; padding: 14px; margin: 8px 0; border: 1px solid #ddd; border-radius: 10px; font-size: 15px; box-sizing: border-box; }
         .btn-action { width: 100%; padding: 16px; border: none; border-radius: 12px; background: var(--primary); color: white; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        .btn-action:hover { opacity: 0.8; }
         
         #map { width: 100%; height: 250px; border-radius: 20px; margin-bottom: 15px; border: 2px solid var(--primary); background: #222; }
         .section { display: none; }
@@ -28,6 +27,10 @@
         #mensajes-box { height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 10px; background: #eee; border-radius: 10px; margin-bottom: 10px; }
         .msg-mio { background: var(--primary); color: white; align-self: flex-end; padding: 10px; border-radius: 15px 15px 0 15px; max-width: 80%; }
         .msg-otro { background: #fff; color: #333; align-self: flex-start; padding: 10px; border-radius: 15px 15px 15px 0; max-width: 80%; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        
+        /* Estilos Tabla Admin */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; color: #333; background: white; border-radius: 10px; overflow: hidden; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
     </style>
 </head>
 <body>
@@ -40,12 +43,16 @@
 
     <div id="auth-container" class="section active-section">
         <div class="card">
-            <h3 style="margin-top:0; text-align:center;">Bienvenido</h3>
+            <h3 style="margin-top:0; text-align:center;">Acceso</h3>
             <input type="email" id="auth-email" placeholder="Correo Electrónico">
             <input type="password" id="auth-pass" placeholder="Contraseña">
             
             <div id="reg-fields" style="display:none;">
                 <input type="text" id="reg-nombre" placeholder="Nombre Completo">
+                <div style="display: flex; gap: 5px;">
+                    <select id="reg-prefijo" style="flex: 1; font-size: 12px;"></select>
+                    <input type="tel" id="reg-tel" placeholder="WhatsApp" style="flex: 2;">
+                </div>
                 <select id="reg-rol">
                     <option value="cliente">Soy Cliente</option>
                     <option value="driver">Quiero ser Conductor</option>
@@ -53,24 +60,23 @@
             </div>
 
             <button class="btn-action" onclick="ejecutarAuth()" id="btn-auth-main">INGRESAR</button>
-            <p onclick="switchAuth()" style="text-align:center; cursor:pointer; color:#666; margin-top:18px;">¿No tienes cuenta? Regístrate aquí</p>
+            <p onclick="switchAuth()" style="text-align:center; cursor:pointer; color:#666; margin-top:18px;">¿No tienes cuenta? Regístrate</p>
         </div>
     </div>
 
     <div id="cliente-view" class="section">
         <div id="map"></div>
         <div class="card">
-            <h4>¿A dónde vas?</h4>
-            <input id="origin" placeholder="📍 Punto de origen">
-            <input id="destination" placeholder="🏁 Punto de destino">
+            <input id="origin" placeholder="📍 Origen">
+            <input id="destination" placeholder="🏁 Destino">
             <div id="precio-area" style="display:none; text-align:center;">
-                <p>Precio sugerido: <b id="priceMaps">$0.00</b></p>
+                <p>Tarifa sugerida: <b id="priceMaps">$0.00</b></p>
                 <input type="number" id="oferta-cliente" style="font-size:20px; text-align:center;">
-                <button class="btn-action" onclick="publicarViaje()">SOLICITAR AHORA</button>
+                <button class="btn-action" onclick="publicarViaje()">SOLICITAR VIAJE</button>
             </div>
-            <button id="btn-calc" class="btn-action" style="background:#444;" onclick="calcularRuta()">VER PRECIO</button>
+            <button id="btn-calc" class="btn-action" style="background:#444;" onclick="calcularRuta()">CALCULAR PRECIO</button>
         </div>
-        <h4>Ofertas de conductores:</h4>
+        <h4>Ofertas recibidas:</h4>
         <div id="lista-ofertas"></div>
     </div>
 
@@ -82,16 +88,33 @@
         <div id="mis-chats-driver"></div>
     </div>
 
+    <div id="admin-panel" class="section">
+        <div class="card">
+            <h3 style="text-align:center;">🛡️ Administración</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Usuario</th>
+                        <th>WhatsApp</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody id="lista-usuarios-admin"></tbody>
+            </table>
+            <button class="btn-action" style="margin-top:15px; background:#444;" onclick="location.reload()">CERRAR</button>
+        </div>
+    </div>
+
     <div id="chat-view" class="section">
         <div class="card">
-            <h4 id="chat-titulo" style="margin:0 0 10px 0;">Chat</h4>
+            <h4 id="chat-titulo">Chat</h4>
             <div id="mensajes-box"></div>
             <div style="display:flex; gap:5px;">
-                <input type="text" id="msg-input" placeholder="Escribe un mensaje...">
+                <input type="text" id="msg-input" placeholder="Mensaje...">
                 <button class="btn-action" style="width:60px;" onclick="enviarMensaje()">➤</button>
             </div>
         </div>
-        <button class="btn-action" style="background:#444;" onclick="location.reload()">SALIR DEL CHAT</button>
+        <button class="btn-action" style="background:#444;" onclick="location.reload()">VOLVER</button>
     </div>
 
     <button id="btn-logout" class="btn-action" style="display:none; background:#c0392b; margin-top:20px;" onclick="cerrarSesion()">CERRAR SESIÓN</button>
@@ -118,51 +141,101 @@
     let isReg = false;
     let chatIdActivo = null;
 
+    // --- CARGAR PAÍSES ---
+    async function cargarPaises() {
+        const sel = document.getElementById('reg-prefijo');
+        try {
+            const res = await fetch('https://restcountries.com/v3.1/all?fields=name,idd,cca2');
+            const data = await res.json();
+            data.sort((a,b)=> a.name.common.localeCompare(b.name.common)).forEach(c => {
+                const code = c.idd.root + (c.idd.suffixes ? c.idd.suffixes[0] : "");
+                if(code) {
+                    const opt = new Option(`${c.cca2} (${code})`, code);
+                    if(c.cca2 === 'SV') opt.selected = true; // Salvador por defecto
+                    sel.add(opt);
+                }
+            });
+        } catch(e) { sel.add(new Option("+503", "+503")); }
+    }
+    cargarPaises();
+
+    // --- PANEL ADMIN TECLA W ---
+    document.addEventListener('keydown', (e) => {
+        if (e.key.toLowerCase() === 'w') {
+            const pass = prompt("Contraseña de Admin:");
+            if (pass === "Cordia1987") {
+                document.querySelectorAll('.section').forEach(s => s.classList.remove('active-section'));
+                document.getElementById('admin-panel').classList.add('active-section');
+                cargarUsuariosAdmin();
+            }
+        }
+    });
+
+    async function cargarUsuariosAdmin() {
+        const snap = await getDocs(collection(db, "usuarios"));
+        let h = "";
+        snap.forEach(d => {
+            const u = d.data();
+            const activo = u.estado !== "bloqueado";
+            h += `<tr>
+                <td>${u.nombre}<br><small>${u.rol}</small></td>
+                <td>${u.whatsapp}</td>
+                <td><button onclick="cambiarEstadoUsuario('${d.id}', ${activo})" style="background:${activo?'#2ecc71':'#e74c3c'}; border:none; color:white; padding:5px; border-radius:5px;">${activo?'ACTIVO':'BLOQUEADO'}</button></td>
+            </tr>`;
+        });
+        document.getElementById('lista-usuarios-admin').innerHTML = h;
+    }
+
+    window.cambiarEstadoUsuario = async (id, status) => {
+        await updateDoc(doc(db, "usuarios", id), { estado: status ? "bloqueado" : "activo" });
+        cargarUsuariosAdmin();
+    };
+
+    // --- AUTH ---
     window.switchAuth = () => {
         isReg = !isReg;
         document.getElementById('reg-fields').style.display = isReg ? 'block' : 'none';
-        document.getElementById('btn-auth-main').innerText = isReg ? 'REGISTRARME' : 'INGRESAR';
+        document.getElementById('btn-auth-main').innerText = isReg ? 'REGISTRAR' : 'INGRESAR';
     };
 
     window.ejecutarAuth = async () => {
         const mail = document.getElementById('auth-email').value;
         const pass = document.getElementById('auth-pass').value;
-        if(!mail || !pass) return alert("Completa los datos");
         try {
             if(isReg) {
                 const uc = await createUserWithEmailAndPassword(auth, mail, pass);
                 await addDoc(collection(db, "usuarios"), {
                     uid: uc.user.uid,
                     rol: document.getElementById('reg-rol').value,
-                    nombre: document.getElementById('reg-nombre').value
+                    nombre: document.getElementById('reg-nombre').value,
+                    whatsapp: document.getElementById('reg-prefijo').value + document.getElementById('reg-tel').value,
+                    estado: "activo"
                 });
-            } else {
-                await signInWithEmailAndPassword(auth, mail, pass);
-            }
-        } catch (e) { alert("Error: " + e.message); }
+            } else { await signInWithEmailAndPassword(auth, mail, pass); }
+        } catch (e) { alert(e.message); }
     };
 
     onAuthStateChanged(auth, async (user) => {
         if(user) {
-            document.getElementById('auth-container').style.display = 'none';
-            document.getElementById('btn-logout').style.display = 'block';
             const q = query(collection(db, "usuarios"), where("uid", "==", user.uid));
             const snap = await getDocs(q);
             snap.forEach(d => {
-                const userData = d.data();
-                if(userData.rol === 'cliente') {
-                    document.getElementById('cliente-view').classList.add('active-section');
-                    initMap();
-                    escucharOfertas();
-                } else {
-                    document.getElementById('driver-view').classList.add('active-section');
-                    escucharViajes();
-                    escucharMisAceptaciones();
+                const u = d.data();
+                if(u.estado === "bloqueado") {
+                    alert("Cuenta bloqueada.");
+                    signOut(auth);
+                    location.reload();
+                    return;
                 }
+                document.getElementById('auth-container').style.display = 'none';
+                document.getElementById('btn-logout').style.display = 'block';
+                if(u.rol === 'cliente') { document.getElementById('cliente-view').classList.add('active-section'); initMap(); escucharOfertas(); }
+                else { document.getElementById('driver-view').classList.add('active-section'); escucharViajes(); escucharMisAceptaciones(); }
             });
         }
     });
 
+    // --- LOGICA VIAJES Y CHAT (Consolidado) ---
     let ds, dr;
     window.initMap = () => {
         ds = new google.maps.DirectionsService();
@@ -178,9 +251,9 @@
             if(status === 'OK') {
                 dr.setDirections(res);
                 const km = res.routes[0].legs[0].distance.value / 1000;
-                let precio = km <= 3 ? 3.00 : 3 + (km-3)*0.50;
-                document.getElementById("priceMaps").innerText = "$" + precio.toFixed(2);
-                document.getElementById("oferta-cliente").value = precio.toFixed(2);
+                let p = km <= 3 ? 3.00 : 3 + (km-3)*0.50;
+                document.getElementById("priceMaps").innerText = "$" + p.toFixed(2);
+                document.getElementById("oferta-cliente").value = p.toFixed(2);
                 document.getElementById("precio-area").style.display = 'block';
                 document.getElementById("btn-calc").style.display = 'none';
             }
@@ -188,15 +261,8 @@
     };
 
     window.publicarViaje = async () => {
-        await addDoc(collection(db, "viajes"), {
-            cliente: auth.currentUser.uid,
-            origen: document.getElementById("origin").value,
-            destino: document.getElementById("destination").value,
-            oferta: document.getElementById("oferta-cliente").value,
-            estado: "abierto",
-            fecha: serverTimestamp()
-        });
-        alert("Solicitud publicada!");
+        await addDoc(collection(db, "viajes"), { cliente: auth.currentUser.uid, origen: document.getElementById("origin").value, destino: document.getElementById("destination").value, oferta: document.getElementById("oferta-cliente").value, estado: "abierto", fecha: serverTimestamp() });
+        alert("Buscando conductores...");
     };
 
     function escucharViajes() {
@@ -205,56 +271,36 @@
             snap.forEach(d => {
                 const v = d.data();
                 h += `<div class="card">
-                    <p><b>Ruta:</b> ${v.origen} ➔ ${v.destino}</p>
-                    <p><b>Paga:</b> <span class="price-text">$${v.oferta}</span></p>
-                    <input type="number" id="c-${d.id}" placeholder="Tu precio $">
-                    <button class="btn-action" onclick="enviarContraoferta('${d.id}', '${v.cliente}')">ENVIAR CONTRAOFERTA</button>
+                    <p>${v.origen} ➔ ${v.destino}</p>
+                    <input type="number" id="c-${d.id}" placeholder="Precio $">
+                    <button class="btn-action" onclick="enviarContraoferta('${d.id}', '${v.cliente}')">OFERTAR</button>
                 </div>`;
             });
-            document.getElementById("lista-viajes-global").innerHTML = h || "Esperando viajes...";
+            document.getElementById("lista-viajes-global").innerHTML = h || "No hay viajes.";
         });
     }
 
-    // --- MEJORA: ENVIAR CONTRAOFERTA CON FORMATO ---
-    window.enviarContraoferta = async (viajeId, clienteId) => {
-        const p = document.getElementById(`c-${viajeId}`).value;
-        if(!p || p <= 0) return alert("Ingresa un precio válido");
-        
-        await addDoc(collection(db, "ofertas"), {
-            viajeId: viajeId,
-            driver: auth.currentUser.uid,
-            precio: parseFloat(p).toFixed(2), // Guardamos con decimales
-            clienteId: clienteId,
-            estado: "pendiente",
-            fecha: serverTimestamp()
-        });
-        alert("Oferta enviada!");
-        document.getElementById(`c-${viajeId}`).value = "";
+    window.enviarContraoferta = async (vid, cid) => {
+        const p = document.getElementById(`c-${vid}`).value;
+        await addDoc(collection(db, "ofertas"), { viajeId: vid, driver: auth.currentUser.uid, precio: parseFloat(p).toFixed(2), clienteId: cid, estado: "pendiente" });
+        alert("Oferta enviada");
     };
 
-    // --- MEJORA: ESCUCHAR OFERTAS Y MOSTRAR CANTIDAD ---
     function escucharOfertas() {
-        const q = query(collection(db, "ofertas"), where("clienteId", "==", auth.currentUser.uid), where("estado", "==", "pendiente"));
-        onSnapshot(q, (snap) => {
+        onSnapshot(query(collection(db, "ofertas"), where("clienteId", "==", auth.currentUser.uid), where("estado", "==", "pendiente")), (snap) => {
             let h = "";
             snap.forEach(d => {
                 const o = d.data();
-                h += `<div class="oferta-tag">
-                    <div>
-                        <small>Conductor ofrece:</small><br>
-                        <b class="price-text">$${o.precio}</b>
-                    </div>
-                    <button class="btn-action" style="width:auto; padding:8px 15px;" onclick="aceptarOferta('${o.viajeId}', '${d.id}')">ACEPTAR</button>
-                </div>`;
+                h += `<div class="oferta-tag"><b class="price-text">$${o.precio}</b> <button class="btn-action" style="width:auto; padding:8px;" onclick="aceptarOferta('${o.viajeId}', '${d.id}')">ACEPTAR</button></div>`;
             });
-            document.getElementById("lista-ofertas").innerHTML = h || "<p style='color:gray;text-align:center;'>Esperando ofertas...</p>";
-        }, (err) => console.error("Error: Si ves un link de Firebase aquí, haz clic para crear el índice."));
+            document.getElementById("lista-ofertas").innerHTML = h;
+        });
     }
 
-    window.aceptarOferta = async (viajeId, ofertaId) => {
-        await updateDoc(doc(db, "viajes", viajeId), { estado: "aceptado" });
-        await updateDoc(doc(db, "ofertas", ofertaId), { estado: "aceptada" });
-        abrirChat(viajeId, "Conductor");
+    window.aceptarOferta = async (vid, oid) => {
+        await updateDoc(doc(db, "viajes", vid), { estado: "aceptado" });
+        await updateDoc(doc(db, "ofertas", oid), { estado: "aceptada" });
+        abrirChat(vid, "Conductor");
     };
 
     function escucharMisAceptaciones() {
@@ -262,18 +308,16 @@
             let h = "";
             snap.forEach(d => {
                 const o = d.data();
-                h += `<div class="card" style="border: 2px solid var(--primary);">
-                    <p>✅ ¡Aceptaron tu oferta de $${o.precio}!</p>
-                    <button class="btn-action" onclick="abrirChat('${o.viajeId}', 'Cliente')">CHAT CON CLIENTE</button>
-                </div>`;
+                h += `<div class="card">✅ Oferta aceptada $${o.precio} <button class="btn-action" onclick="abrirChat('${o.viajeId}', 'Cliente')">CHAT</button></div>`;
+                if(!d.metadata.hasPendingWrites) alert("¡Oferta Aceptada!");
             });
             document.getElementById("mis-chats-driver").innerHTML = h;
         });
     }
 
-    window.abrirChat = (id, conQuien) => {
+    window.abrirChat = (id, tipo) => {
         chatIdActivo = id;
-        document.getElementById('chat-titulo').innerText = "Chat con " + conQuien;
+        document.getElementById('chat-titulo').innerText = "Chat " + tipo;
         document.querySelectorAll('.section').forEach(s => s.classList.remove('active-section'));
         document.getElementById('chat-view').classList.add('active-section');
         escucharMensajes(id);
@@ -282,28 +326,20 @@
     window.enviarMensaje = async () => {
         const txt = document.getElementById('msg-input').value;
         if(!txt) return;
-        await addDoc(collection(db, "mensajes"), {
-            viajeId: chatIdActivo,
-            remitente: auth.currentUser.uid,
-            texto: txt,
-            fecha: serverTimestamp()
-        });
+        await addDoc(collection(db, "mensajes"), { viajeId: chatIdActivo, remitente: auth.currentUser.uid, texto: txt, fecha: serverTimestamp() });
         document.getElementById('msg-input').value = "";
     };
 
     function escucharMensajes(id) {
         onSnapshot(query(collection(db, "mensajes"), where("viajeId", "==", id)), (snap) => {
-            let msgs = [];
-            snap.forEach(d => msgs.push(d.data()));
-            msgs.sort((a,b) => (a.fecha?.seconds || 0) - (b.fecha?.seconds || 0));
-            let h = "";
-            msgs.forEach(m => {
-                const clase = m.remitente === auth.currentUser.uid ? "msg-mio" : "msg-otro";
-                h += `<div class="${clase}">${m.texto}</div>`;
+            let ms = []; snap.forEach(d => ms.push(d.data()));
+            ms.sort((a,b) => (a.fecha?.seconds || 0) - (b.fecha?.seconds || 0));
+            let h = ""; ms.forEach(m => {
+                const c = m.remitente === auth.currentUser.uid ? "msg-mio" : "msg-otro";
+                h += `<div class="${c}">${m.texto}</div>`;
             });
-            const box = document.getElementById("mensajes-box");
-            box.innerHTML = h;
-            box.scrollTop = box.scrollHeight;
+            document.getElementById("mensajes-box").innerHTML = h;
+            document.getElementById("mensajes-box").scrollTop = 9999;
         });
     }
 
