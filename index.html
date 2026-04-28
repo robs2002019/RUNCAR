@@ -16,15 +16,18 @@
         .card { background: var(--white); color: #333; border-radius: 20px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); margin-bottom: 15px; }
         input, select { width: 100%; padding: 14px; margin: 8px 0; border: 1px solid #ddd; border-radius: 10px; font-size: 15px; box-sizing: border-box; }
         .btn-action { width: 100%; padding: 16px; border: none; border-radius: 12px; background: var(--primary); color: white; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .btn-action:hover { opacity: 0.9; }
         
         #map { width: 100%; height: 250px; border-radius: 20px; margin-bottom: 15px; border: 2px solid var(--primary); background: #222; }
         .section { display: none; }
         .active-section { display: block; }
 
-        /* Estilos Negociación */
         .oferta-tag { background: #f9f9f9; padding: 15px; border-radius: 12px; margin: 10px 0; border-left: 5px solid var(--primary); display: flex; justify-content: space-between; align-items: center; }
         .price-text { color: var(--primary); font-size: 18px; font-weight: bold; }
         .file-box { background: #f0f0f0; padding: 10px; border-radius: 10px; font-size: 12px; margin: 5px 0; border: 1px dashed #ccc; }
+        
+        /* Estilo para las sugerencias de Google que a veces se ocultan */
+        .pac-container { border-radius: 10px; margin-top: 5px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
     </style>
 </head>
 <body>
@@ -43,32 +46,25 @@
             
             <div id="reg-fields" style="display:none;">
                 <input type="text" id="reg-nombre" placeholder="Nombre Completo">
-                
                 <div style="display:flex; gap:5px;">
-                    <select id="reg-pais" style="flex:1;">
-                        <option value="">Cargando países...</option>
-                    </select>
+                    <select id="reg-pais" style="flex:1;"><option value="">Cargando...</option></select>
                     <input type="tel" id="reg-tel" placeholder="WhatsApp" style="flex:2;">
                 </div>
-
                 <div class="file-box"><label>Foto de Perfil</label><input type="file" id="foto-perfil"></div>
-                
                 <select id="reg-rol" onchange="toggleDriverReg()">
                     <option value="cliente">Soy Cliente</option>
                     <option value="driver">Quiero ser Conductor</option>
                 </select>
-
                 <div id="driver-docs" style="display:none; border-top:1px solid #eee; margin-top:10px;">
                     <h5 style="color:var(--primary)">Documentos y Vehículo</h5>
-                    <div class="file-box"><label>DUI, Licencia y Antecedentes (Fotos)</label><input type="file" multiple></div>
+                    <div class="file-box"><label>DUI, Licencia (Fotos)</label><input type="file" multiple></div>
                     <input type="text" id="car-marca" placeholder="Marca y Modelo">
                     <select id="car-anio"></select>
-                    <div class="file-box"><label>Fotos del Auto (Mínimo 5)</label><input type="file" multiple></div>
                 </div>
             </div>
 
             <button class="btn-action" onclick="ejecutarAuth()" id="btn-auth-main">INGRESAR</button>
-            <p onclick="switchAuth()" id="toggle-text" style="text-align:center; font-size:16px; cursor:pointer; color:#666; margin-top:18px;">¿No tienes cuenta? Regístrate aquí</p>
+            <p onclick="switchAuth()" id="toggle-text" style="text-align:center; cursor:pointer; color:#666; margin-top:18px;">¿No tienes cuenta? Regístrate aquí</p>
         </div>
     </div>
 
@@ -76,15 +72,17 @@
         <div id="map"></div>
         <div class="card">
             <h4>Solicitar Viaje</h4>
-            <input id="origin" placeholder="📍 Origen">
-            <input id="destination" placeholder="🏁 Destino">
+            <input id="origin" placeholder="📍 ¿De dónde sales?">
+            <input id="destination" placeholder="🏁 ¿A dónde vas?">
             
             <div id="precio-area" style="display:none; text-align:center;">
-                <p>Tarifa sugerida: <b id="priceMaps">$0.00</b></p>
+                <p style="margin-bottom:5px;">Tarifa sugerida (con tráfico):</p>
+                <b id="priceMaps" style="font-size:24px; color:var(--primary);">$0.00</b>
+                <p id="timeEst" style="font-size:12px; color:#666; margin-top:0;"></p>
                 <input type="number" id="oferta-cliente" style="font-size:25px; text-align:center; color:var(--primary); font-weight:bold;">
                 <button class="btn-action" onclick="publicarViaje()">PUBLICAR OFERTA</button>
             </div>
-            <button id="btn-calc" class="btn-action" style="background:#444;" onclick="calcularRuta()">CALCULAR PRECIO</button>
+            <button id="btn-calc" class="btn-action" style="background:#444;" onclick="calcularRuta()">CALCULAR PRECIO Y RUTA</button>
         </div>
         <h4>Propuestas de Conductores</h4>
         <div id="lista-ofertas"></div>
@@ -116,45 +114,93 @@
     const db = getFirestore(app);
     const auth = getAuth(app);
 
-    // --- CARGAR PAÍSES DEL MUNDO ---
+    // --- PAÍSES ---
     async function cargarPaises() {
         const selectPais = document.getElementById('reg-pais');
         try {
             const response = await fetch('https://restcountries.com/v3.1/all?fields=name,idd,flag,cca2');
             const countries = await response.json();
             selectPais.innerHTML = ''; 
-
             countries.sort((a, b) => a.name.common.localeCompare(b.name.common));
-
-            countries.forEach(country => {
-                if (country.idd.root) {
-                    const dialCode = country.idd.root + (country.idd.suffixes ? country.idd.suffixes[0] : "");
-                    const option = document.createElement('option');
-                    option.value = dialCode;
-                    option.textContent = `${country.flag} ${country.name.common} (${dialCode})`;
-                    
-                    // Predeterminado El Salvador
-                    if(country.cca2 === 'SV') option.selected = true;
-                    selectPais.appendChild(option);
+            countries.forEach(c => {
+                if (c.idd.root) {
+                    const dial = c.idd.root + (c.idd.suffixes ? c.idd.suffixes[0] : "");
+                    const opt = new Option(`${c.flag} ${dial}`, dial);
+                    if(c.cca2 === 'SV') opt.selected = true;
+                    selectPais.add(opt);
                 }
             });
-        } catch (e) {
-            selectPais.innerHTML = '<option value="+503">🇸🇻 El Salvador (+503)</option>';
-        }
+        } catch (e) { selectPais.innerHTML = '<option value="+503">🇸🇻 +503</option>'; }
     }
     cargarPaises();
 
-    let isReg = false;
-    let pBase = 0;
+    // --- MAPAS Y AUTOCOMPLETE ---
+    let ds, dr, mapa;
+    window.initMap = () => {
+        const centro = { lat: 13.6929, lng: -89.2182 };
+        mapa = new google.maps.Map(document.getElementById("map"), {
+            center: centro,
+            zoom: 13,
+            mapTypeControl: false,
+            streetViewControl: false
+        });
 
-    window.cerrarSesion = async () => {
-        try {
-            await signOut(auth);
-            alert("Sesión cerrada correctamente");
-            location.reload(); 
-        } catch (error) { alert("Error al cerrar sesión"); }
+        ds = new google.maps.DirectionsService();
+        dr = new google.maps.DirectionsRenderer({ map: mapa });
+
+        const options = {
+            componentRestrictions: { country: "sv" },
+            fields: ["geometry", "name", "formatted_address"],
+        };
+
+        const acOrigen = new google.maps.places.Autocomplete(document.getElementById("origin"), options);
+        const acDestino = new google.maps.places.Autocomplete(document.getElementById("destination"), options);
+
+        acOrigen.addListener("place_changed", () => {
+            const p = acOrigen.getPlace();
+            if (p.geometry) mapa.panTo(p.geometry.location);
+        });
     };
 
+    // --- CÁLCULO CON TRÁFICO ---
+    window.calcularRuta = () => {
+        const o = document.getElementById("origin").value;
+        const d = document.getElementById("destination").value;
+
+        if(!o || !d) return alert("Ingresa origen y destino");
+
+        ds.route({
+            origin: o,
+            destination: d,
+            travelMode: 'DRIVING',
+            drivingOptions: {
+                departureTime: new Date(Date.now()), // Activa tráfico real
+                trafficModel: 'best_guess'
+            }
+        }, (res, status) => {
+            if(status === 'OK') {
+                dr.setDirections(res);
+                const leg = res.routes[0].legs[0];
+                const km = leg.distance.value / 1000;
+                const tiempo = leg.duration.text;
+                
+                // Lógica de precio: $3 base + $0.30 por km extra
+                let pBase = km <= 3 ? 3.00 : 3 + (km-3)*0.30;
+                
+                document.getElementById("priceMaps").innerText = "$" + pBase.toFixed(2);
+                document.getElementById("timeEst").innerText = "Tiempo estimado: " + tiempo;
+                document.getElementById("oferta-cliente").value = pBase.toFixed(2);
+                document.getElementById("precio-area").style.display = 'block';
+                document.getElementById("btn-calc").style.display = 'none';
+            } else {
+                alert("No se pudo calcular la ruta.");
+            }
+        });
+    };
+
+    // --- LOGICA AUTH Y VISTAS (FIREBASE) ---
+    // ... Mantengo tu lógica original de Firebase para no romper el flujo ...
+    let isReg = false;
     window.switchAuth = () => {
         isReg = !isReg;
         document.getElementById('reg-fields').style.display = isReg ? 'block' : 'none';
@@ -180,7 +226,6 @@
                     nombre: document.getElementById('reg-nombre').value,
                     whatsapp: document.getElementById('reg-pais').value + document.getElementById('reg-tel').value
                 });
-                alert("Registro completado.");
             } else {
                 await signInWithEmailAndPassword(auth, mail, pass);
             }
@@ -193,10 +238,8 @@
             document.getElementById('btn-logout').style.display = 'block';
             const q = query(collection(db, "usuarios"), where("uid", "==", user.uid));
             const snap = await getDocs(q);
-            
             document.getElementById('cliente-view').classList.remove('active-section');
             document.getElementById('driver-view').classList.remove('active-section');
-
             snap.forEach(d => {
                 if(d.data().rol === 'cliente') {
                     document.getElementById('cliente-view').classList.add('active-section');
@@ -213,29 +256,7 @@
         }
     });
 
-    let ds, dr;
-    window.initMap = () => {
-        ds = new google.maps.DirectionsService();
-        dr = new google.maps.DirectionsRenderer({ map: new google.maps.Map(document.getElementById("map"), { center: {lat:13.6, lng:-89.2}, zoom:12 }) });
-        new google.maps.places.Autocomplete(document.getElementById("origin"));
-        new google.maps.places.Autocomplete(document.getElementById("destination"));
-    };
-
-    window.calcularRuta = () => {
-        const o = document.getElementById("origin").value;
-        const d = document.getElementById("destination").value;
-        ds.route({ origin:o, destination:d, travelMode:'DRIVING' }, (res, status) => {
-            if(status === 'OK') {
-                dr.setDirections(res);
-                const km = res.routes[0].legs[0].distance.value / 1000;
-                pBase = km <= 3 ? 3.00 : 3 + (km-3)*0.30;
-                document.getElementById("priceMaps").innerText = "$" + pBase.toFixed(2);
-                document.getElementById("oferta-cliente").value = pBase.toFixed(2);
-                document.getElementById("precio-area").style.display = 'block';
-                document.getElementById("btn-calc").style.display = 'none';
-            }
-        });
-    };
+    window.cerrarSesion = () => signOut(auth).then(() => location.reload());
 
     window.publicarViaje = async () => {
         await addDoc(collection(db, "viajes"), {
@@ -255,24 +276,26 @@
             snap.forEach(d => {
                 const v = d.data();
                 h += `<div class="card">
-                    <small>${v.origen} → ${v.destino}</small>
+                    <p style="font-size:14px; margin:0;"><b>Origen:</b> ${v.origen}</p>
+                    <p style="font-size:14px; margin:5px 0;"><b>Destino:</b> ${v.destino}</p>
                     <p>Ofrece: <b class="price-text">$${v.oferta}</b></p>
-                    <input type="number" id="c-${d.id}" placeholder="Tu contraoferta $">
-                    <button class="btn-action" onclick="enviarContraoferta('${d.id}')">ENVIAR PRECIO</button>
+                    <input type="number" id="c-${d.id}" placeholder="Tu precio $">
+                    <button class="btn-action" onclick="enviarContraoferta('${d.id}')">ENVIAR CONTRAOFERTA</button>
                 </div>`;
             });
-            document.getElementById("lista-viajes-global").innerHTML = h || "Esperando solicitudes...";
+            document.getElementById("lista-viajes-global").innerHTML = h || "No hay viajes por ahora.";
         });
     }
 
     window.enviarContraoferta = async (id) => {
         const val = document.getElementById(`c-${id}`).value;
-        const viajeRef = (await getDocs(query(collection(db, "viajes")))).docs.find(x => x.id === id);
+        const viajes = await getDocs(collection(db, "viajes"));
+        const v = viajes.docs.find(x => x.id === id).data();
         await addDoc(collection(db, "ofertas"), {
             viajeId: id,
             driver: auth.currentUser.uid,
             precio: val,
-            clienteId: viajeRef.data().cliente
+            clienteId: v.cliente
         });
         alert("Oferta enviada.");
     };
@@ -283,15 +306,13 @@
             snap.forEach(d => {
                 const o = d.data();
                 h += `<div class="oferta-tag">
-                    <span>Conductor ofrece: <b class="price-text">$${o.precio}</b></span>
-                    <button class="btn-action" style="width:auto; padding:10px;" onclick="confirmar()">ACEPTAR</button>
+                    <span>Oferta de conductor: <b class="price-text">$${o.precio}</b></span>
+                    <button class="btn-action" style="width:auto; padding:10px 20px;" onclick="alert('¡Viaje aceptado!')">ACEPTAR</button>
                 </div>`;
             });
             document.getElementById("lista-ofertas").innerHTML = h;
         });
     }
-
-    window.confirmar = () => alert("¡Viaje confirmado!");
 </script>
 </body>
 </html>
