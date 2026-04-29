@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RUNCAR</title>
+    <title>RUNCAR PRO</title>
     
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDj2kkjVmMqJSWN4OVbue2jPOidhGO2GOU&libraries=places,geometry"></script>
 
@@ -73,41 +73,39 @@
             
             <div id="precio-area" style="display:none; text-align:center;">
                 <div class="info-ruta">
-                    <p style="margin:5px 0"><b>KM del viaje:</b> <span id="distancia-km">0</span> km</p>
-                    <p style="margin:5px 0"><b>Tarifa Base Google:</b> <b id="priceMaps">$0.00</b></p>
+                    <p style="margin:5px 0"><b>KM:</b> <span id="distancia-km">0</span> km</p>
+                    <p style="margin:5px 0"><b>Tarifa Sugerida:</b> <b id="priceMaps">$0.00</b></p>
                 </div>
-                
-                <textarea id="detalles-pax" placeholder="Ej: 2 pasajeros, 1 mascota, 1 bebé..."></textarea>
+                <textarea id="detalles-pax" placeholder="Pasajeros, mascotas, bebés..."></textarea>
                 <small>Tu oferta inicial ($):</small>
                 <input type="number" id="oferta-cliente" style="font-size:20px; text-align:center; border: 2px solid var(--primary);">
-                
-                <button class="btn-action" onclick="publicarViaje()">ENVIAR OFERTA A CONDUCTORES</button>
+                <button class="btn-action" onclick="publicarViaje()">SOLICITAR CONDUCTORES</button>
             </div>
-            <button id="btn-calc" class="btn-action btn-secondary" onclick="calcularRuta()">CALCULAR RUTA Y DISTANCIA</button>
+            <button id="btn-calc" class="btn-action btn-secondary" onclick="calcularRuta()">CALCULAR RUTA</button>
         </div>
-        <h4>Propuestas de Conductores:</h4>
+        <h4>Contraofertas recibidas:</h4>
         <div id="lista-ofertas"></div>
     </div>
 
     <div id="driver-view" class="section">
-        <h4 style="color:var(--primary)">Nuevas Solicitudes de Clientes</h4>
+        <h4 style="color:var(--primary)">Viajes Disponibles</h4>
         <div id="lista-viajes-global"></div>
         <hr>
-        <h4 style="color:var(--accent)">Viajes en Chat</h4>
+        <h4 style="color:var(--accent)">Chats Activos</h4>
         <div id="mis-chats-driver"></div>
     </div>
 
     <div id="chat-view" class="section">
         <div class="card">
-            <h4 id="chat-titulo">Chat en Vivo</h4>
+            <h4 id="chat-titulo">Chat</h4>
             <div id="mensajes-box"></div>
             <div style="display:flex; gap:5px;">
-                <input type="text" id="msg-input" placeholder="Escribe un mensaje...">
+                <input type="text" id="msg-input" placeholder="Mensaje...">
                 <button class="btn-action" style="width:60px; margin:0;" onclick="enviarMensaje()">➤</button>
             </div>
             <button class="btn-action btn-finish" onclick="finalizarViaje()">FINALIZAR VIAJE</button>
         </div>
-        <button class="btn-action btn-secondary" onclick="location.reload()">SALIR DEL CHAT</button>
+        <button class="btn-action btn-secondary" onclick="location.reload()">VOLVER</button>
     </div>
 
     <button id="btn-logout" class="btn-action" style="display:none; background:var(--danger); margin-top:20px;" onclick="cerrarSesion()">CERRAR SESIÓN</button>
@@ -134,9 +132,8 @@
     let isReg = false;
     let chatIdActivo = null;
     let kmGlobal = 0;
-    let rechazadosLocal = []; // Para que el driver oculte lo que ya rechazó en esta sesión
 
-    // --- PAÍSES ---
+    // --- CARGAR PAÍSES ---
     async function cargarPaises() {
         const sel = document.getElementById('reg-prefijo');
         try {
@@ -209,7 +206,7 @@
     window.calcularRuta = () => {
         const o = document.getElementById("origin").value;
         const d = document.getElementById("destination").value;
-        if(!o || !d) return alert("Ingresa origen y destino");
+        if(!o || !d) return;
         ds.route({ origin:o, destination:d, travelMode:'DRIVING' }, (res, status) => {
             if(status === 'OK') {
                 dr.setDirections(res);
@@ -226,69 +223,70 @@
     };
 
     window.publicarViaje = async () => {
-        const det = document.getElementById("detalles-pax").value;
-        const off = document.getElementById("oferta-cliente").value;
-        if(!off) return alert("Ingresa tu oferta");
         await addDoc(collection(db, "viajes"), {
             cliente: auth.currentUser.uid,
             origen: document.getElementById("origin").value,
             destino: document.getElementById("destination").value,
             distancia: kmGlobal,
-            detalles: det || "Sin requisitos extra",
-            oferta: off,
+            detalles: document.getElementById("detalles-pax").value || "Sin requisitos",
+            oferta: document.getElementById("oferta-cliente").value,
             estado: "abierto",
             fecha: serverTimestamp()
         });
-        alert("Solicitud enviada a los conductores cercanos.");
+        alert("Oferta publicada.");
     };
 
-    // --- CONDUCTOR: VER VIAJES Y CONTRAOFERTAR ---
+    // --- LÓGICA CONDUCTOR CON RECHAZO PERSISTENTE ---
     function escucharViajes() {
-        onSnapshot(query(collection(db, "viajes"), where("estado", "==", "abierto")), (snap) => {
-            let h = "";
-            snap.forEach(d => {
-                const v = d.data();
-                if(rechazadosLocal.includes(d.id)) return;
-                h += `<div class="card" id="card-${d.id}">
-                    <p style="margin:2px 0; color:var(--primary)"><b>${v.distancia} KM</b></p>
-                    <p style="margin:2px 0"><b>Req:</b> ${v.detalles}</p>
-                    <p style="font-size:12px; color:#666">${v.origen.split(',')[0]} ➔ ${v.destino.split(',')[0]}</p>
-                    <p><b>Cliente Paga:</b> <span style="font-weight:bold">$${v.oferta}</span></p>
-                    <input type="number" id="price-${d.id}" placeholder="Tu contraoferta $">
-                    <div class="flex-btns">
-                        <button class="btn-action" onclick="enviarContraoferta('${d.id}', '${v.cliente}')">CONTRAOFERTAR</button>
-                        <button class="btn-action btn-danger" onclick="rechazarDriverLocal('${d.id}')">RECHAZAR</button>
-                    </div>
-                </div>`;
+        const userUid = auth.currentUser.uid;
+        // Escuchamos rechazos propios
+        onSnapshot(query(collection(db, "rechazos"), where("driverId", "==", userUid)), (rechazoSnap) => {
+            const idsRechazados = [];
+            rechazoSnap.forEach(doc => idsRechazados.push(doc.data().viajeId));
+
+            // Escuchamos viajes
+            onSnapshot(query(collection(db, "viajes"), where("estado", "==", "abierto")), (viajeSnap) => {
+                let h = "";
+                viajeSnap.forEach(d => {
+                    if (idsRechazados.includes(d.id)) return;
+                    const v = d.data();
+                    h += `<div class="card">
+                        <p style="color:var(--primary)"><b>${v.distancia} KM</b></p>
+                        <p style="font-size:12px;">${v.origen.split(',')[0]} ➔ ${v.destino.split(',')[0]}</p>
+                        <p><b>Req:</b> ${v.detalles}</p>
+                        <p><b>Cliente ofrece: $${v.oferta}</b></p>
+                        <input type="number" id="price-${d.id}" placeholder="Tu contraoferta $">
+                        <div class="flex-btns">
+                            <button class="btn-action" onclick="enviarContraoferta('${d.id}', '${v.cliente}')">OFERTAR</button>
+                            <button class="btn-action btn-danger" onclick="registrarRechazoPersistente('${d.id}')">RECHAZAR</button>
+                        </div>
+                    </div>`;
+                });
+                document.getElementById("lista-viajes-global").innerHTML = h || "Buscando viajes...";
             });
-            document.getElementById("lista-viajes-global").innerHTML = h || "Esperando nuevas solicitudes...";
         });
     }
 
-    window.rechazarDriverLocal = (id) => {
-        rechazadosLocal.push(id);
-        document.getElementById(`card-${id}`).style.display = 'none';
+    window.registrarRechazoPersistente = async (viajeId) => {
+        await addDoc(collection(db, "rechazos"), { viajeId: viajeId, driverId: auth.currentUser.uid, fecha: serverTimestamp() });
     };
 
     window.enviarContraoferta = async (vid, cid) => {
         const p = document.getElementById(`price-${vid}`).value;
-        if(!p) return alert("Pon un precio para negociar");
-        await addDoc(collection(db, "ofertas"), {
-            viajeId: vid, driver: auth.currentUser.uid,
-            precio: parseFloat(p).toFixed(2), clienteId: cid, estado: "pendiente"
-        });
-        rechazarDriverLocal(vid);
-        alert("¡Contraoferta enviada!");
+        if(!p) return alert("Ingresa precio");
+        await addDoc(collection(db, "ofertas"), { viajeId: vid, driver: auth.currentUser.uid, precio: parseFloat(p).toFixed(2), clienteId: cid, estado: "pendiente" });
+        await registrarRechazoPersistente(vid); // Ocultar después de ofertar
+        alert("Oferta enviada.");
     };
 
-    // --- CLIENTE: ACEPTAR O RECHAZAR ---
+    // --- LÓGICA CLIENTE ---
     function escucharOfertas() {
         onSnapshot(query(collection(db, "ofertas"), where("clienteId", "==", auth.currentUser.uid), where("estado", "==", "pendiente")), (snap) => {
             let h = "";
             snap.forEach(d => {
                 const o = d.data();
                 h += `<div class="oferta-tag">
-                    <div style="margin-bottom:10px;">Un conductor propone: <b class="price-text">$${o.precio}</b></div>
+                    <p>Conductor ofrece: <b class="price-text">$${o.precio}</b></p>
                     <div class="flex-btns">
                         <button class="btn-action" onclick="aceptarOferta('${o.viajeId}', '${d.id}')">ACEPTAR</button>
                         <button class="btn-action btn-danger" onclick="rechazarOfertaCliente('${d.id}')">RECHAZAR</button>
@@ -307,7 +305,6 @@
 
     window.rechazarOfertaCliente = async (oid) => {
         await deleteDoc(doc(db, "ofertas", oid));
-        alert("Oferta rechazada y eliminada.");
     };
 
     function escucharMisAceptaciones() {
@@ -315,7 +312,7 @@
             let h = "";
             snap.forEach(d => {
                 const o = d.data();
-                h += `<div class="card">🚀 ¡Oferta Aceptada! ($${o.precio}) <button class="btn-action" onclick="abrirChat('${o.viajeId}', 'Cliente')">ENTRAR AL CHAT</button></div>`;
+                h += `<div class="card">✅ Oferta aceptada ($${o.precio}) <button class="btn-action" onclick="abrirChat('${o.viajeId}', 'Cliente')">CHAT</button></div>`;
             });
             document.getElementById("mis-chats-driver").innerHTML = h;
         });
@@ -352,7 +349,7 @@
     }
 
     window.finalizarViaje = async () => {
-        if(confirm("¿El viaje ha terminado? Esto cerrará la negociación.")) {
+        if(confirm("¿Finalizar viaje?")) {
             await updateDoc(doc(db, "viajes", chatIdActivo), { estado: "finalizado" });
             location.reload();
         }
