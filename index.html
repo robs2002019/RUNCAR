@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RUNCAR PRO</title>
+    <title>RUNCAR</title>
     
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDj2kkjVmMqJSWN4OVbue2jPOidhGO2GOU&libraries=places,geometry"></script>
 
@@ -56,7 +56,7 @@
                 <input type="tel" id="reg-tel" placeholder="Número WhatsApp">
                 <select id="reg-rol">
                     <option value="cliente">Soy Cliente</option>
-                    <option value="driver">Quiero ser Conductor</option>
+                    <option value="driver">Quiero ser Conductor(a)</option>
                 </select>
             </div>
 
@@ -70,7 +70,6 @@
         <div class="card">
             <input id="origin" placeholder="📍 Origen">
             <input id="destination" placeholder="🏁 Destino">
-            
             <div id="precio-area" style="display:none; text-align:center;">
                 <div class="info-ruta">
                     <p style="margin:5px 0"><b>KM:</b> <span id="distancia-km">0</span> km</p>
@@ -91,7 +90,7 @@
         <h4 style="color:var(--primary)">Viajes Disponibles</h4>
         <div id="lista-viajes-global"></div>
         <hr>
-        <h4 style="color:var(--accent)">Chats Activos</h4>
+        <h4 style="color:var(--accent)">Viajes en Curso (Chat)</h4>
         <div id="mis-chats-driver"></div>
     </div>
 
@@ -103,9 +102,9 @@
                 <input type="text" id="msg-input" placeholder="Mensaje...">
                 <button class="btn-action" style="width:60px; margin:0;" onclick="enviarMensaje()">➤</button>
             </div>
-            <button class="btn-action btn-finish" onclick="finalizarViaje()">FINALIZAR VIAJE</button>
+            <button class="btn-action btn-finish" id="btn-finalizar" onclick="finalizarViaje()">FINALIZAR VIAJE</button>
         </div>
-        <button class="btn-action btn-secondary" onclick="location.reload()">VOLVER</button>
+        <button class="btn-action btn-secondary" onclick="location.reload()">VOLVER AL INICIO</button>
     </div>
 
     <button id="btn-logout" class="btn-action" style="display:none; background:var(--danger); margin-top:20px;" onclick="cerrarSesion()">CERRAR SESIÓN</button>
@@ -113,7 +112,7 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs, query, where, onSnapshot, serverTimestamp, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, getDocs, query, where, onSnapshot, serverTimestamp, doc, updateDoc, deleteDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-auth.js";
 
     const firebaseConfig = {
@@ -151,7 +150,6 @@
     }
     cargarPaises();
 
-    // --- AUTH ---
     window.switchAuth = () => {
         isReg = !isReg;
         document.getElementById('reg-fields').style.display = isReg ? 'block' : 'none';
@@ -228,7 +226,7 @@
             origen: document.getElementById("origin").value,
             destino: document.getElementById("destination").value,
             distancia: kmGlobal,
-            detalles: document.getElementById("detalles-pax").value || "Sin requisitos",
+            detalles: document.getElementById("detalles-pax").value || "Oferta cliente $, # pasajeros, bebes, mascotas, carga, etc.",
             oferta: document.getElementById("oferta-cliente").value,
             estado: "abierto",
             fecha: serverTimestamp()
@@ -236,15 +234,13 @@
         alert("Oferta publicada.");
     };
 
-    // --- LÓGICA CONDUCTOR CON RECHAZO PERSISTENTE ---
+    // --- CONDUCTOR ---
     function escucharViajes() {
         const userUid = auth.currentUser.uid;
-        // Escuchamos rechazos propios
         onSnapshot(query(collection(db, "rechazos"), where("driverId", "==", userUid)), (rechazoSnap) => {
             const idsRechazados = [];
             rechazoSnap.forEach(doc => idsRechazados.push(doc.data().viajeId));
 
-            // Escuchamos viajes
             onSnapshot(query(collection(db, "viajes"), where("estado", "==", "abierto")), (viajeSnap) => {
                 let h = "";
                 viajeSnap.forEach(d => {
@@ -275,11 +271,11 @@
         const p = document.getElementById(`price-${vid}`).value;
         if(!p) return alert("Ingresa precio");
         await addDoc(collection(db, "ofertas"), { viajeId: vid, driver: auth.currentUser.uid, precio: parseFloat(p).toFixed(2), clienteId: cid, estado: "pendiente" });
-        await registrarRechazoPersistente(vid); // Ocultar después de ofertar
+        await registrarRechazoPersistente(vid);
         alert("Oferta enviada.");
     };
 
-    // --- LÓGICA CLIENTE ---
+    // --- CLIENTE ---
     function escucharOfertas() {
         onSnapshot(query(collection(db, "ofertas"), where("clienteId", "==", auth.currentUser.uid), where("estado", "==", "pendiente")), (snap) => {
             let h = "";
@@ -307,14 +303,25 @@
         await deleteDoc(doc(db, "ofertas", oid));
     };
 
+    // --- LIMPIEZA DE CHATS (CORREGIDO) ---
     function escucharMisAceptaciones() {
         onSnapshot(query(collection(db, "ofertas"), where("driver", "==", auth.currentUser.uid), where("estado", "==", "aceptada")), (snap) => {
-            let h = "";
-            snap.forEach(d => {
+            const container = document.getElementById("mis-chats-driver");
+            container.innerHTML = ""; // Limpiamos para reconstruir con validación de viaje activo
+
+            snap.forEach(async (d) => {
                 const o = d.data();
-                h += `<div class="card">✅ Oferta aceptada ($${o.precio}) <button class="btn-action" onclick="abrirChat('${o.viajeId}', 'Cliente')">CHAT</button></div>`;
+                // Validamos si el viaje padre sigue activo (estado 'aceptado')
+                const viajeRef = doc(db, "viajes", o.viajeId);
+                const viajeSnap = await getDoc(viajeRef);
+                
+                if (viajeSnap.exists() && viajeSnap.data().estado === 'aceptado') {
+                    const card = document.createElement('div');
+                    card.className = "card";
+                    card.innerHTML = `✅ Viaje en curso ($${o.precio}) <button class="btn-action" onclick="abrirChat('${o.viajeId}', 'Cliente')">ENTRAR AL CHAT</button>`;
+                    container.appendChild(card);
+                }
             });
-            document.getElementById("mis-chats-driver").innerHTML = h;
         });
     }
 
@@ -349,9 +356,23 @@
     }
 
     window.finalizarViaje = async () => {
-        if(confirm("¿Finalizar viaje?")) {
-            await updateDoc(doc(db, "viajes", chatIdActivo), { estado: "finalizado" });
-            location.reload();
+        if(confirm("¿Confirmas que el viaje ha finalizado con éxito?")) {
+            try {
+                // Cambiamos estado del viaje a finalizado
+                await updateDoc(doc(db, "viajes", chatIdActivo), { estado: "finalizado" });
+                
+                // Opcional: También podemos actualizar la oferta a 'finalizada' para mayor orden
+                const qOferta = query(collection(db, "ofertas"), where("viajeId", "==", chatIdActivo), where("estado", "==", "aceptada"));
+                const snapOferta = await getDocs(qOferta);
+                snapOferta.forEach(async (d) => {
+                    await updateDoc(doc(db, "ofertas", d.id), { estado: "finalizada" });
+                });
+
+                alert("Viaje finalizado. ¡Buen trabajo!");
+                location.reload();
+            } catch (e) {
+                console.error(e);
+            }
         }
     };
 
