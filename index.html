@@ -8,7 +8,7 @@
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDj2kkjVmMqJSWN4OVbue2jPOidhGO2GOU&libraries=places,geometry"></script>
 
     <style>
-        :root { --primary: #2ecc71; --secondary: #1a1a1a; --accent: #f1c40f; --white: #ffffff; }
+        :root { --primary: #2ecc71; --secondary: #1a1a1a; --accent: #f1c40f; --white: #ffffff; --danger: #e74c3c; }
         body { font-family: 'Segoe UI', sans-serif; margin: 0; background: var(--secondary); color: white; padding-bottom: 50px; }
         .container { max-width: 500px; margin: auto; padding: 15px; }
         header { text-align: center; padding: 20px; background: rgba(0,0,0,0.3); border-radius: 0 0 25px 25px; border-bottom: 2px solid var(--primary); margin-bottom: 20px; }
@@ -16,6 +16,9 @@
         .card { background: var(--white); color: #333; border-radius: 20px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); margin-bottom: 15px; }
         input, select { width: 100%; padding: 14px; margin: 8px 0; border: 1px solid #ddd; border-radius: 10px; font-size: 15px; box-sizing: border-box; }
         .btn-action { width: 100%; padding: 16px; border: none; border-radius: 12px; background: var(--primary); color: white; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .btn-secondary { background: #444; margin-top: 10px; }
+        .btn-finish { background: var(--accent); color: #000; margin-top: 10px; }
+        .btn-admin-access { background: #3498db; margin-bottom: 15px; display: none; }
         
         #map { width: 100%; height: 250px; border-radius: 20px; margin-bottom: 15px; border: 2px solid var(--primary); background: #222; }
         .section { display: none; }
@@ -28,9 +31,8 @@
         .msg-mio { background: var(--primary); color: white; align-self: flex-end; padding: 10px; border-radius: 15px 15px 0 15px; max-width: 80%; }
         .msg-otro { background: #fff; color: #333; align-self: flex-start; padding: 10px; border-radius: 15px 15px 15px 0; max-width: 80%; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         
-        /* Estilos Tabla Admin */
         table { width: 100%; border-collapse: collapse; margin-top: 10px; color: #333; background: white; border-radius: 10px; overflow: hidden; }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; font-size: 13px; }
     </style>
 </head>
 <body>
@@ -40,6 +42,7 @@
 </header>
 
 <div class="container">
+    <button id="btn-admin-ui" class="btn-action btn-admin-access" onclick="mostrarAdminPanel()">⚙️ PANEL ADMINISTRADOR</button>
 
     <div id="auth-container" class="section active-section">
         <div class="card">
@@ -74,7 +77,7 @@
                 <input type="number" id="oferta-cliente" style="font-size:20px; text-align:center;">
                 <button class="btn-action" onclick="publicarViaje()">SOLICITAR VIAJE</button>
             </div>
-            <button id="btn-calc" class="btn-action" style="background:#444;" onclick="calcularRuta()">CALCULAR PRECIO</button>
+            <button id="btn-calc" class="btn-action btn-secondary" onclick="calcularRuta()">CALCULAR PRECIO</button>
         </div>
         <h4>Ofertas recibidas:</h4>
         <div id="lista-ofertas"></div>
@@ -90,7 +93,7 @@
 
     <div id="admin-panel" class="section">
         <div class="card">
-            <h3 style="text-align:center;">🛡️ Administración</h3>
+            <h3 style="text-align:center;">🛡️ Gestión de Usuarios</h3>
             <table>
                 <thead>
                     <tr>
@@ -101,7 +104,7 @@
                 </thead>
                 <tbody id="lista-usuarios-admin"></tbody>
             </table>
-            <button class="btn-action" style="margin-top:15px; background:#444;" onclick="location.reload()">CERRAR</button>
+            <button class="btn-action btn-secondary" onclick="cerrarAdminPanel()">VOLVAR AL INICIO</button>
         </div>
     </div>
 
@@ -113,16 +116,17 @@
                 <input type="text" id="msg-input" placeholder="Mensaje...">
                 <button class="btn-action" style="width:60px;" onclick="enviarMensaje()">➤</button>
             </div>
+            <button class="btn-action btn-finish" onclick="finalizarViaje()">FINALIZAR VIAJE</button>
         </div>
-        <button class="btn-action" style="background:#444;" onclick="location.reload()">VOLVER</button>
+        <button class="btn-action btn-secondary" onclick="location.reload()">CERRAR CHAT</button>
     </div>
 
-    <button id="btn-logout" class="btn-action" style="display:none; background:#c0392b; margin-top:20px;" onclick="cerrarSesion()">CERRAR SESIÓN</button>
+    <button id="btn-logout" class="btn-action" style="display:none; background:var(--danger); margin-top:20px;" onclick="cerrarSesion()">CERRAR SESIÓN</button>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs, query, where, onSnapshot, serverTimestamp, doc, updateDoc, orderBy } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, getDocs, query, where, onSnapshot, serverTimestamp, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-auth.js";
 
     const firebaseConfig = {
@@ -140,8 +144,9 @@
 
     let isReg = false;
     let chatIdActivo = null;
+    const ADMIN_EMAIL = "robs2002019@gmail.com";
 
-    // --- CARGAR PAÍSES ---
+    // --- PAISES ---
     async function cargarPaises() {
         const sel = document.getElementById('reg-prefijo');
         try {
@@ -151,7 +156,7 @@
                 const code = c.idd.root + (c.idd.suffixes ? c.idd.suffixes[0] : "");
                 if(code) {
                     const opt = new Option(`${c.cca2} (${code})`, code);
-                    if(c.cca2 === 'SV') opt.selected = true; // Salvador por defecto
+                    if(c.cca2 === 'SV') opt.selected = true;
                     sel.add(opt);
                 }
             });
@@ -159,17 +164,16 @@
     }
     cargarPaises();
 
-    // --- PANEL ADMIN TECLA W ---
-    document.addEventListener('keydown', (e) => {
-        if (e.key.toLowerCase() === 'w') {
-            const pass = prompt("Contraseña de Admin:");
-            if (pass === "Cordia1987") {
-                document.querySelectorAll('.section').forEach(s => s.classList.remove('active-section'));
-                document.getElementById('admin-panel').classList.add('active-section');
-                cargarUsuariosAdmin();
-            }
-        }
-    });
+    // --- LÓGICA ADMIN ---
+    window.mostrarAdminPanel = () => {
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active-section'));
+        document.getElementById('admin-panel').classList.add('active-section');
+        cargarUsuariosAdmin();
+    };
+
+    window.cerrarAdminPanel = () => {
+        location.reload();
+    };
 
     async function cargarUsuariosAdmin() {
         const snap = await getDocs(collection(db, "usuarios"));
@@ -209,7 +213,8 @@
                     rol: document.getElementById('reg-rol').value,
                     nombre: document.getElementById('reg-nombre').value,
                     whatsapp: document.getElementById('reg-prefijo').value + document.getElementById('reg-tel').value,
-                    estado: "activo"
+                    estado: "activo",
+                    email: mail
                 });
             } else { await signInWithEmailAndPassword(auth, mail, pass); }
         } catch (e) { alert(e.message); }
@@ -217,12 +222,17 @@
 
     onAuthStateChanged(auth, async (user) => {
         if(user) {
+            // Verificar si es el administrador principal por correo
+            if(user.email === ADMIN_EMAIL) {
+                document.getElementById('btn-admin-ui').style.display = 'block';
+            }
+
             const q = query(collection(db, "usuarios"), where("uid", "==", user.uid));
             const snap = await getDocs(q);
             snap.forEach(d => {
                 const u = d.data();
                 if(u.estado === "bloqueado") {
-                    alert("Cuenta bloqueada.");
+                    alert("Cuenta bloqueada por la administración.");
                     signOut(auth);
                     location.reload();
                     return;
@@ -235,7 +245,7 @@
         }
     });
 
-    // --- LOGICA VIAJES Y CHAT (Consolidado) ---
+    // --- MAPAS Y VIAJES ---
     let ds, dr;
     window.initMap = () => {
         ds = new google.maps.DirectionsService();
@@ -271,19 +281,21 @@
             snap.forEach(d => {
                 const v = d.data();
                 h += `<div class="card">
-                    <p>${v.origen} ➔ ${v.destino}</p>
-                    <input type="number" id="c-${d.id}" placeholder="Precio $">
+                    <p><b>De:</b> ${v.origen}<br><b>A:</b> ${v.destino}</p>
+                    <p><b>Paga:</b> $${v.oferta}</p>
+                    <input type="number" id="c-${d.id}" placeholder="Tu precio $">
                     <button class="btn-action" onclick="enviarContraoferta('${d.id}', '${v.cliente}')">OFERTAR</button>
                 </div>`;
             });
-            document.getElementById("lista-viajes-global").innerHTML = h || "No hay viajes.";
+            document.getElementById("lista-viajes-global").innerHTML = h || "No hay solicitudes.";
         });
     }
 
     window.enviarContraoferta = async (vid, cid) => {
         const p = document.getElementById(`c-${vid}`).value;
+        if(!p) return alert("Ingresa un precio.");
         await addDoc(collection(db, "ofertas"), { viajeId: vid, driver: auth.currentUser.uid, precio: parseFloat(p).toFixed(2), clienteId: cid, estado: "pendiente" });
-        alert("Oferta enviada");
+        alert("Oferta enviada.");
     };
 
     function escucharOfertas() {
@@ -308,16 +320,16 @@
             let h = "";
             snap.forEach(d => {
                 const o = d.data();
-                h += `<div class="card">✅ Oferta aceptada $${o.precio} <button class="btn-action" onclick="abrirChat('${o.viajeId}', 'Cliente')">CHAT</button></div>`;
-                if(!d.metadata.hasPendingWrites) alert("¡Oferta Aceptada!");
+                h += `<div class="card">✅ Viaje Aceptado ($${o.precio}) <button class="btn-action" onclick="abrirChat('${o.viajeId}', 'Cliente')">CHAT</button></div>`;
             });
             document.getElementById("mis-chats-driver").innerHTML = h;
         });
     }
 
+    // --- CHAT ---
     window.abrirChat = (id, tipo) => {
         chatIdActivo = id;
-        document.getElementById('chat-titulo').innerText = "Chat " + tipo;
+        document.getElementById('chat-titulo').innerText = "Chat con " + tipo;
         document.querySelectorAll('.section').forEach(s => s.classList.remove('active-section'));
         document.getElementById('chat-view').classList.add('active-section');
         escucharMensajes(id);
@@ -342,6 +354,20 @@
             document.getElementById("mensajes-box").scrollTop = 9999;
         });
     }
+
+    window.finalizarViaje = async () => {
+        if (!chatIdActivo) return;
+        if (confirm("¿Marcar viaje como completado? Se limpiará tu historial.")) {
+            const q = query(collection(db, "ofertas"), where("viajeId", "==", chatIdActivo), where("estado", "==", "aceptada"));
+            const snap = await getDocs(q);
+            for (const d of snap.docs) {
+                await updateDoc(doc(db, "ofertas", d.id), { estado: "finalizada" });
+            }
+            await updateDoc(doc(db, "viajes", chatIdActivo), { estado: "finalizado" });
+            alert("Viaje finalizado.");
+            location.reload(); 
+        }
+    };
 
     window.cerrarSesion = () => signOut(auth).then(() => location.reload());
 </script>
