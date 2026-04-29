@@ -251,7 +251,7 @@
             if(status === 'OK') {
                 dr.setDirections(res);
                 const km = res.routes[0].legs[0].distance.value / 1000;
-                let p = km <= 3 ? 3.00 : 3 + (km-3)*0.50;
+                let p = km <= 3 ? 3.00 : 3 + (km-3)*0.30;
                 document.getElementById("priceMaps").innerText = "$" + p.toFixed(2);
                 document.getElementById("oferta-cliente").value = p.toFixed(2);
                 document.getElementById("precio-area").style.display = 'block';
