@@ -44,6 +44,7 @@
 </header>
 
 <div class="container">
+    <!-- SECCIÓN AUTH -->
     <div id="auth-container" class="section active-section">
         <div class="card">
             <h3 style="margin-top:0; text-align:center;">Acceso</h3>
@@ -65,6 +66,7 @@
         </div>
     </div>
 
+    <!-- VISTA CLIENTE -->
     <div id="cliente-view" class="section">
         <div id="map"></div>
         <div class="card">
@@ -86,6 +88,7 @@
         <div id="lista-ofertas"></div>
     </div>
 
+    <!-- VISTA CONDUCTOR -->
     <div id="driver-view" class="section">
         <h4 style="color:var(--primary)">Viajes Disponibles</h4>
         <div id="lista-viajes-global"></div>
@@ -94,6 +97,7 @@
         <div id="mis-chats-driver"></div>
     </div>
 
+    <!-- VISTA CHAT -->
     <div id="chat-view" class="section">
         <div class="card">
             <h4 id="chat-titulo">Chat</h4>
@@ -210,7 +214,16 @@
                 dr.setDirections(res);
                 const km = res.routes[0].legs[0].distance.value / 1000;
                 kmGlobal = km.toFixed(2);
-                let p = km <= 1 ? 1.00, km <= 2 ? 2.00, km <= 3 ? 3.00 : 3 + (km-3)*0.30;
+                
+                // Lógica de Precios Solicitada:
+                // 1km=$1, 2km=$2, 3km=$3. A partir del 4to: $3 base + $0.30 por km extra.
+                let p = 0;
+                if (km <= 3) {
+                    p = km * 1.0;
+                } else {
+                    p = 3 + (km - 3) * 0.30;
+                }
+
                 document.getElementById("distancia-km").innerText = kmGlobal;
                 document.getElementById("priceMaps").innerText = "$" + p.toFixed(2);
                 document.getElementById("oferta-cliente").value = p.toFixed(2);
@@ -303,15 +316,13 @@
         await deleteDoc(doc(db, "ofertas", oid));
     };
 
-    // --- LIMPIEZA DE CHATS (CORREGIDO) ---
     function escucharMisAceptaciones() {
         onSnapshot(query(collection(db, "ofertas"), where("driver", "==", auth.currentUser.uid), where("estado", "==", "aceptada")), (snap) => {
             const container = document.getElementById("mis-chats-driver");
-            container.innerHTML = ""; // Limpiamos para reconstruir con validación de viaje activo
+            container.innerHTML = ""; 
 
             snap.forEach(async (d) => {
                 const o = d.data();
-                // Validamos si el viaje padre sigue activo (estado 'aceptado')
                 const viajeRef = doc(db, "viajes", o.viajeId);
                 const viajeSnap = await getDoc(viajeRef);
                 
@@ -358,10 +369,7 @@
     window.finalizarViaje = async () => {
         if(confirm("¿Confirmas que el viaje ha finalizado con éxito?")) {
             try {
-                // Cambiamos estado del viaje a finalizado
                 await updateDoc(doc(db, "viajes", chatIdActivo), { estado: "finalizado" });
-                
-                // Opcional: También podemos actualizar la oferta a 'finalizada' para mayor orden
                 const qOferta = query(collection(db, "ofertas"), where("viajeId", "==", chatIdActivo), where("estado", "==", "aceptada"));
                 const snapOferta = await getDocs(qOferta);
                 snapOferta.forEach(async (d) => {
