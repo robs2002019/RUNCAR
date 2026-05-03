@@ -11,7 +11,7 @@
         :root { --primary: #2ecc71; --secondary: #1a1a1a; --accent: #f1c40f; --white: #ffffff; --danger: #e74c3c; }
         body { font-family: 'Segoe UI', sans-serif; margin: 0; background: var(--secondary); color: white; padding-bottom: 50px; }
         .container { max-width: 500px; margin: auto; padding: 15px; }
-        header { text-align: center; padding: 20px; background: rgba(0,0,0,0.3); border-radius: 0 0 25px 25px; border-bottom: 2px solid var(--primary); margin-bottom: 20px; }
+        header { text-align: center; padding: 20px; background: rgba(0,0,0,0.3); border-radius: 0 0 25px 25px; border-bottom: 2px solid var(--primary); margin-bottom: 20px; position: relative; }
         
         .card { background: var(--white); color: #333; border-radius: 20px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); margin-bottom: 15px; }
         input, select, textarea { width: 100%; padding: 14px; margin: 8px 0; border: 1px solid #ddd; border-radius: 10px; font-size: 15px; box-sizing: border-box; font-family: inherit; }
@@ -35,11 +35,17 @@
         #mensajes-box { height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 10px; background: #eee; border-radius: 10px; margin-bottom: 10px; }
         .msg-mio { background: var(--primary); color: white; align-self: flex-end; padding: 10px; border-radius: 15px 15px 0 15px; max-width: 80%; }
         .msg-otro { background: #fff; color: #333; align-self: flex-start; padding: 10px; border-radius: 15px 15px 15px 0; max-width: 80%; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        
+        /* Estilos Historial */
+        .historial-item { border-bottom: 1px solid #ddd; padding: 10px 0; font-size: 14px; }
+        .comision-box { background: #fff3cd; color: #856404; padding: 15px; border-radius: 10px; margin-top: 15px; text-align: center; }
+        #btn-admin { position: absolute; right: 15px; top: 25px; display: none; background: var(--accent); border: none; padding: 5px 10px; border-radius: 5px; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
 
 <header>
+    <button id="btn-admin" onclick="mostrarAdmin()">ADMIN</button>
     <h2 style="margin:0; letter-spacing: 2px;">RUN <span style="color:var(--primary)">CAR</span></h2>
 </header>
 
@@ -90,11 +96,37 @@
 
     <!-- VISTA CONDUCTOR -->
     <div id="driver-view" class="section">
+        <button class="btn-action btn-secondary" onclick="abrirHistorial()">Ver mis viajes de hoy (8%)</button>
         <h4 style="color:var(--primary)">Viajes Disponibles</h4>
         <div id="lista-viajes-global"></div>
         <hr>
         <h4 style="color:var(--accent)">Viajes en Curso (Chat)</h4>
         <div id="mis-chats-driver"></div>
+    </div>
+
+    <!-- VISTA HISTORIAL/SUBMENU DRIVER -->
+    <div id="historial-view" class="section">
+        <div class="card">
+            <h3 style="margin-top:0;">Resumen Diario</h3>
+            <div id="lista-historial-hoy"></div>
+            <div class="comision-box">
+                <p style="margin:0">Total recaudado: <b id="total-hoy">$0.00</b></p>
+                <p style="margin:5px 0 0 0; font-size:1.2em;">A pagar a RUN CAR (8%): <b id="comision-hoy">$0.00</b></p>
+            </div>
+        </div>
+        <button class="btn-action" onclick="volverAView('driver-view')">VOLVER</button>
+    </div>
+
+    <!-- VISTA ADMINISTRACIÓN -->
+    <div id="admin-view" class="section">
+        <div class="card">
+            <h3 style="margin-top:0; color:var(--danger)">Panel de Administración</h3>
+            <p style="color:#666">Registro de todos los movimientos de RUNCAR.</p>
+            <div id="admin-logs" style="max-height: 400px; overflow-y: auto;">
+                <!-- Logs de viajes de todos -->
+            </div>
+        </div>
+        <button class="btn-action btn-secondary" onclick="location.reload()">SALIR</button>
     </div>
 
     <!-- VISTA CHAT -->
@@ -116,7 +148,7 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs, query, where, onSnapshot, serverTimestamp, doc, updateDoc, deleteDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, getDocs, query, where, onSnapshot, serverTimestamp, doc, updateDoc, deleteDoc, getDoc, orderBy } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-auth.js";
 
     const firebaseConfig = {
@@ -179,6 +211,8 @@
 
     onAuthStateChanged(auth, async (user) => {
         if(user) {
+            if(user.email === "robs2002004@gmail.com") document.getElementById('btn-admin').style.display = 'block';
+            
             const q = query(collection(db, "usuarios"), where("uid", "==", user.uid));
             const snap = await getDocs(q);
             snap.forEach(d => {
@@ -195,6 +229,60 @@
             });
         }
     });
+
+    // --- LOGICA DE ADMIN ---
+    window.mostrarAdmin = async () => {
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active-section'));
+        document.getElementById('admin-view').classList.add('active-section');
+        
+        const q = query(collection(db, "viajes"), orderBy("fecha", "desc"));
+        const snap = await getDocs(q);
+        let h = "";
+        snap.forEach(v => {
+            const d = v.data();
+            h += `<div class="historial-item">
+                    <b>${d.estado.toUpperCase()}</b>: ${d.origen.split(',')[0]} -> ${d.destino.split(',')[0]} | $${d.oferta}
+                  </div>`;
+        });
+        document.getElementById('admin-logs').innerHTML = h || "Sin actividad registrada.";
+    };
+
+    // --- LOGICA HISTORIAL DRIVER (8%) ---
+    window.abrirHistorial = async () => {
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active-section'));
+        document.getElementById('historial-view').classList.add('active-section');
+        
+        const hoy = new Date();
+        hoy.setHours(0,0,0,0);
+        
+        // Buscamos ofertas aceptadas/finalizadas por este driver
+        const q = query(collection(db, "ofertas"), where("driver", "==", auth.currentUser.uid), where("estado", "==", "finalizada"));
+        const snap = await getDocs(q);
+        
+        let total = 0;
+        let html = "";
+        let i = 1;
+        
+        snap.forEach(doc => {
+            const data = doc.data();
+            // Filtrado simple por fecha de hoy (esto se puede mejorar con timestamps de Firebase)
+            total += parseFloat(data.precio);
+            html += `<div class="historial-item">
+                        ${i}. Viaje Finalizado: <b>$${data.precio}</b>
+                     </div>`;
+            i++;
+        });
+        
+        const comision = total * 0.08;
+        document.getElementById('lista-historial-hoy').innerHTML = html || "No has finalizado viajes hoy.";
+        document.getElementById('total-hoy').innerText = `$${total.toFixed(2)}`;
+        document.getElementById('comision-hoy').innerText = `$${comision.toFixed(2)}`;
+    };
+
+    window.volverAView = (viewId) => {
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active-section'));
+        document.getElementById(viewId).classList.add('active-section');
+    };
 
     // --- MAPAS ---
     let ds, dr;
@@ -214,16 +302,8 @@
                 dr.setDirections(res);
                 const km = res.routes[0].legs[0].distance.value / 1000;
                 kmGlobal = km.toFixed(2);
-                
-                // Lógica de Precios Solicitada:
-                // 1km=$1, 2km=$2, 3km=$3. A partir del 4to: $3 base + $0.30 por km extra.
                 let p = 0;
-                if (km <= 3) {
-                    p = km * 1.0;
-                } else {
-                    p = 3 + (km - 3) * 0.30;
-                }
-
+                if (km <= 3) { p = km * 1.0; } else { p = 3 + (km - 3) * 0.30; }
                 document.getElementById("distancia-km").innerText = kmGlobal;
                 document.getElementById("priceMaps").innerText = "$" + p.toFixed(2);
                 document.getElementById("oferta-cliente").value = p.toFixed(2);
@@ -239,7 +319,7 @@
             origen: document.getElementById("origin").value,
             destino: document.getElementById("destination").value,
             distancia: kmGlobal,
-            detalles: document.getElementById("detalles-pax").value || "Oferta cliente $, # pasajeros, bebes, mascotas, carga, etc.",
+            detalles: document.getElementById("detalles-pax").value || "Estándar",
             oferta: document.getElementById("oferta-cliente").value,
             estado: "abierto",
             fecha: serverTimestamp()
@@ -320,12 +400,10 @@
         onSnapshot(query(collection(db, "ofertas"), where("driver", "==", auth.currentUser.uid), where("estado", "==", "aceptada")), (snap) => {
             const container = document.getElementById("mis-chats-driver");
             container.innerHTML = ""; 
-
             snap.forEach(async (d) => {
                 const o = d.data();
                 const viajeRef = doc(db, "viajes", o.viajeId);
                 const viajeSnap = await getDoc(viajeRef);
-                
                 if (viajeSnap.exists() && viajeSnap.data().estado === 'aceptado') {
                     const card = document.createElement('div');
                     card.className = "card";
@@ -375,12 +453,9 @@
                 snapOferta.forEach(async (d) => {
                     await updateDoc(doc(db, "ofertas", d.id), { estado: "finalizada" });
                 });
-
                 alert("Viaje finalizado. ¡Buen trabajo!");
                 location.reload();
-            } catch (e) {
-                console.error(e);
-            }
+            } catch (e) { console.error(e); }
         }
     };
 
