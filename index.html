@@ -28,6 +28,13 @@
         .section { display: none; }
         .active-section { display: block; }
 
+        /* ESTILOS DEL MODAL (VENTANA FLOTANTE) */
+        .modal-overlay { 
+            position: fixed; top:0; left:0; width:100%; height:100%; 
+            background: rgba(0,0,0,0.85); display:none; align-items:center; justify-content:center; z-index: 1000; 
+        }
+        .modal-content { width: 90%; max-width: 400px; }
+
         .item-list, .historial-item { border-bottom: 1px solid #eee; padding: 10px 0; font-size: 13px; color: #333; }
         .scroll-area { max-height: 300px; overflow-y: auto; background: var(--gray); padding: 10px; border-radius: 10px; margin-top: 10px; }
         
@@ -45,6 +52,22 @@
     <button id="btn-admin" onclick="mostrarAdmin()">ADMIN</button>
     <h2 style="margin:0; letter-spacing: 2px;">RUN <span style="color:var(--primary)">CAR</span></h2>
 </header>
+
+<!-- MODAL PARA OFERTAR (CONDUCTOR) -->
+<div id="modal-oferta" class="modal-overlay">
+    <div class="card modal-content">
+        <h3 id="modal-ruta-titulo" style="margin-top:0; color:var(--primary);">Detalles del Viaje</h3>
+        <p id="modal-info-viaje" style="font-size: 14px; line-height: 1.4;"></p>
+        <hr>
+        <label style="font-size:12px; color:#666;">TU CONTRAOFERTA ($)</label>
+        <input type="number" id="input-precio-modal" placeholder="Ej: 5.50" step="0.01">
+        
+        <div class="flex-btns">
+            <button class="btn-action" onclick="confirmarOfertaModal()">ACEPTAR Y ENVIAR</button>
+            <button class="btn-action btn-danger" onclick="cerrarModalOferta()">ELIMINAR Y CERRAR</button>
+        </div>
+    </div>
+</div>
 
 <div class="container">
     <!-- AUTH -->
@@ -116,16 +139,6 @@
         <button class="btn-action btn-secondary" onclick="volverAView('driver-view')">VOLVER</button>
     </div>
 
-    <!-- ADMIN -->
-    <div id="admin-view" class="section">
-        <div class="card">
-            <h3 style="margin-top:0; color:var(--danger)">Panel de Control</h3>
-            <div id="admin-users" class="scroll-area"></div>
-            <button class="btn-action btn-excel" onclick="exportarExcelAdmin()">EXPORTAR TODO A EXCEL</button>
-        </div>
-        <button class="btn-action btn-secondary" onclick="location.reload()">SALIR</button>
-    </div>
-
     <!-- CHAT -->
     <div id="chat-view" class="section">
         <div class="card">
@@ -161,15 +174,44 @@
     const db = getFirestore(app);
     const auth = getAuth(app);
 
+    let currentViajeId = null;
+    let currentClienteId = null;
     let isReg = false;
     let chatIdActivo = null;
-    let kmGlobal = 0;
 
-    // --- LIMPIEZA AL CARGAR ---
-    async function limpiarViejos() {
-        // Esta función podría borrar viajes de más de 12 horas para mantener la DB limpia
-        console.log("Limpiando sesión...");
-    }
+    // --- FUNCIONES DEL MODAL CONDUCTOR ---
+    window.abrirModalOferta = (id, origen, destino, oferta, cliente) => {
+        currentViajeId = id;
+        currentClienteId = cliente;
+        document.getElementById('modal-ruta-titulo').innerText = "Nuevo Viaje Disponible";
+        document.getElementById('modal-info-viaje').innerHTML = `<b>De:</b> ${origen}<br><b>A:</b> ${destino}<br><b>Ofrece:</b> $${oferta}`;
+        document.getElementById('input-precio-modal').value = oferta;
+        document.getElementById('modal-oferta').style.display = 'flex';
+    };
+
+    window.cerrarModalOferta = () => {
+        document.getElementById('modal-oferta').style.display = 'none';
+        currentViajeId = null;
+    };
+
+    window.confirmarOfertaModal = async () => {
+        const p = document.getElementById('input-precio-modal').value;
+        if(!p || p <= 0) return alert("Ingresa un precio válido");
+        
+        try {
+            await addDoc(collection(db, "ofertas"), { 
+                viajeId: currentViajeId, 
+                driver: auth.currentUser.uid, 
+                precio: p, 
+                clienteId: currentClienteId, 
+                estado: "pendiente" 
+            });
+            alert("Oferta enviada con éxito.");
+            cerrarModalOferta();
+        } catch (e) {
+            console.error(e);
+        }
+    };
 
     // --- AUTH ---
     window.switchAuth = () => {
@@ -197,7 +239,6 @@
 
     onAuthStateChanged(auth, async (user) => {
         if(user) {
-            if(user.email === "robs2002004@gmail.com") document.getElementById('btn-admin').style.display = 'block';
             const q = query(collection(db, "usuarios"), where("uid", "==", user.uid));
             const snap = await getDocs(q);
             snap.forEach(d => {
@@ -212,7 +253,6 @@
                     escucharViajes(); escucharMisAceptaciones(); 
                 }
             });
-            limpiarViejos();
         }
     });
 
@@ -232,9 +272,9 @@
         ds.route({ origin:o, destination:d, travelMode:'DRIVING' }, (res, status) => {
             if(status === 'OK') {
                 dr.setDirections(res);
-                kmGlobal = (res.routes[0].legs[0].distance.value / 1000).toFixed(2);
-                let p = kmGlobal <= 3 ? 3.00 : (3 + (kmGlobal - 3) * 0.30);
-                document.getElementById("distancia-km").innerText = kmGlobal;
+                const km = (res.routes[0].legs[0].distance.value / 1000).toFixed(2);
+                let p = km <= 3 ? 3.00 : (3 + (km - 3) * 0.30);
+                document.getElementById("distancia-km").innerText = km;
                 document.getElementById("priceMaps").innerText = "$" + p.toFixed(2);
                 document.getElementById("oferta-cliente").value = p.toFixed(2);
                 document.getElementById("precio-area").style.display = 'block';
@@ -256,10 +296,7 @@
 
     // --- CLIENTE: RECIBIR OFERTAS ---
     function escucharOfertas() {
-        // Al actualizar, solo se cargan ofertas que siguen "pendientes"
-        onSnapshot(query(collection(db, "ofertas"), 
-            where("clienteId", "==", auth.currentUser.uid), 
-            where("estado", "==", "pendiente")), (snap) => {
+        onSnapshot(query(collection(db, "ofertas"), where("clienteId", "==", auth.currentUser.uid), where("estado", "==", "pendiente")), (snap) => {
             let h = "";
             snap.forEach(d => {
                 const o = d.data();
@@ -289,29 +326,17 @@
             let h = "";
             snap.forEach(d => {
                 const v = d.data();
-                h += `<div class="card">
-                        <p><b>Ruta:</b> ${v.origen.split(',')[0]} → ${v.destino.split(',')[0]}</p>
-                        <p>Tarifa Cliente: $${v.oferta}</p>
-                        <input type="number" id="price-${d.id}" placeholder="Tu oferta $">
-                        <button class="btn-action" onclick="enviarContraoferta('${d.id}', '${v.cliente}')">ENVIAR OFERTA</button>
+                h += `<div class="card" onclick="abrirModalOferta('${d.id}', '${v.origen.split(',')[0]}', '${v.destino.split(',')[0]}', '${v.oferta}', '${v.cliente}')" style="cursor:pointer; border-left:5px solid var(--primary);">
+                        <p style="margin:0;">📍 <b>Ruta:</b> ${v.origen.split(',')[0]} → ${v.destino.split(',')[0]}</p>
+                        <p style="margin:5px 0 0 0; font-size:14px; color:#666;">Ofrece: <b>$${v.oferta}</b> - <small>Toca para ofertar</small></p>
                     </div>`;
             });
             document.getElementById("lista-viajes-global").innerHTML = h || "No hay viajes abiertos.";
         });
     }
 
-    window.enviarContraoferta = async (vid, cid) => {
-        const p = document.getElementById(`price-${vid}`).value;
-        if(!p) return;
-        await addDoc(collection(db, "ofertas"), { viajeId: vid, driver: auth.currentUser.uid, precio: p, clienteId: cid, estado: "pendiente" });
-        alert("Oferta enviada.");
-    };
-
     function escucharMisAceptaciones() {
-        // Esto asegura que al actualizar, el driver solo vea los viajes confirmados (aceptados)
-        onSnapshot(query(collection(db, "ofertas"), 
-            where("driver", "==", auth.currentUser.uid), 
-            where("estado", "==", "aceptada")), (snap) => {
+        onSnapshot(query(collection(db, "ofertas"), where("driver", "==", auth.currentUser.uid), where("estado", "==", "aceptada")), (snap) => {
             const container = document.getElementById("mis-chats-driver");
             container.innerHTML = ""; 
             snap.forEach(async (d) => {
@@ -320,8 +345,7 @@
                 if (v.exists() && v.data().estado === 'aceptado') {
                     const div = document.createElement('div');
                     div.className = "card";
-                    div.innerHTML = `✅ ¡Oferta Aceptada! ($${o.precio}) 
-                                     <button class="btn-action" onclick="abrirChat('${o.viajeId}', 'Cliente')">ABRIR CHAT</button>`;
+                    div.innerHTML = `✅ ¡Oferta Aceptada! ($${o.precio}) <button class="btn-action" onclick="abrirChat('${o.viajeId}', 'Cliente')">ABRIR CHAT</button>`;
                     container.appendChild(div);
                 }
             });
@@ -357,12 +381,12 @@
     }
 
     window.finalizarViaje = async () => {
-        if(confirm("¿Finalizar viaje? Esto borrará el chat activo.")) {
+        if(confirm("¿Finalizar viaje?")) {
             await updateDoc(doc(db, "viajes", chatIdActivo), { estado: "finalizado" });
             const ofs = await getDocs(query(collection(db, "ofertas"), where("viajeId", "==", chatIdActivo), where("estado", "==", "aceptada")));
             ofs.forEach(async (d) => await updateDoc(doc(db, "ofertas", d.id), { estado: "finalizada" }));
             alert("Viaje terminado.");
-            location.reload(); // Al recargar, los estados ya no coinciden con los filtros y la pantalla queda limpia
+            location.reload();
         }
     };
 
@@ -374,7 +398,7 @@
         let total = 0; let html = "";
         snap.forEach(doc => {
             total += parseFloat(doc.data().precio);
-            html += `<div class="historial-item">Viaje: $${doc.data().precio}</div>`;
+            html += `<div class="historial-item">Viaje Finalizado: $${doc.data().precio}</div>`;
         });
         document.getElementById('lista-historial-hoy').innerHTML = html || "Sin datos.";
         document.getElementById('total-hoy').innerText = `$${total.toFixed(2)}`;
@@ -388,7 +412,6 @@
 
     window.cerrarSesion = () => signOut(auth).then(() => location.reload());
 
-    // Cargar Países
     async function cargarPaises() {
         const sel = document.getElementById('reg-prefijo');
         const res = await fetch('https://restcountries.com/v3.1/all?fields=idd,flag,cca2');
