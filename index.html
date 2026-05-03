@@ -210,7 +210,7 @@
                 dr.setDirections(res);
                 const km = res.routes[0].legs[0].distance.value / 1000;
                 kmGlobal = km.toFixed(2);
-                let p = km <= 3 ? 3.00 : 3 + (km-3)*0.30;
+                let p = km <= 1 ? 1.00, km <= 2 ? 2.00, km <= 3 ? 3.00 : 3 + (km-3)*0.30;
                 document.getElementById("distancia-km").innerText = kmGlobal;
                 document.getElementById("priceMaps").innerText = "$" + p.toFixed(2);
                 document.getElementById("oferta-cliente").value = p.toFixed(2);
