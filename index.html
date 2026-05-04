@@ -305,7 +305,7 @@
 
     // CONDUCTOR VE VIAJES
     function cargarViajesDisponibles() {
-        const q = query(collection(db, "viajes"), where("estado", "==", "buscando"), orderBy("timestamp", "desc"));
+        const q = query(collection(db, "viajes"), where("estado", "==", "buscando"));
         onSnapshot(q, (snap) => {
             let h = "";
             snap.forEach(d => {
