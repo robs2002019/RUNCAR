@@ -42,27 +42,50 @@
 </header>
 
 <div class="container">
-    <div id="auth-container" class="section active-section">
-        <div class="card">
-            <h3 style="margin-top:0; text-align:center;">Acceso</h3>
-            <input type="email" id="auth-email" placeholder="Correo Electrónico">
-            <input type="password" id="auth-pass" placeholder="Contraseña">
-            <div id="reg-fields" style="display:none;">
-                <input type="text" id="reg-nombre" placeholder="Nombre Completo">
-                <div style="display: flex; gap: 5px;">
-                    <select id="reg-prefijo" style="flex: 1; font-size: 12px;"></select>
-                    <input type="tel" id="reg-tel" placeholder="WhatsApp" style="flex: 2;">
-                </div>
-                <select id="reg-rol">
-                    <option value="cliente">Soy Cliente</option>
-                    <option value="driver">Quiero ser Conductor</option>
-                </select>
-            </div>
-            <button class="btn-action" onclick="ejecutarAuth()" id="btn-auth-main">INGRESAR</button>
-            <p onclick="switchAuth()" style="text-align:center; cursor:pointer; color:#666; margin-top:18px;">¿No tienes cuenta? Regístrate</p>
-        </div>
-    </div>
+    <header>
+        <h2 style="margin:0">RUN <span style="color:var(--primary)">CAR</span> PRO</h2>
+        <div id="local-time">00:00:00</div>
+    </header>
 
+    <div id="auth-view" class="card">
+        <h3>Crear Cuenta</h3>
+        <input type="text" id="reg-name" placeholder="Nombre completo">
+        <input type="email" id="reg-email" placeholder="Correo electrónico">
+        
+        <div class="phone-group">
+            <select id="country-code"></select>
+            <input type="tel" id="reg-phone" placeholder="Número de WhatsApp">
+        </div>
+
+        <select id="reg-role" onchange="toggleForm()">
+            <option value="client">Soy Cliente</option>
+            <option value="driver">Quiero ser Conductor</option>
+        </select>
+
+        <div id="client-fields">
+            <span class="file-label">Foto de Rostro (Seguridad):</span>
+            <input type="file" accept="image/*">
+        </div>
+
+        <div id="driver-fields" class="hidden">
+            <span class="file-label">Foto de Perfil:</span>
+            <input type="file" accept="image/*">
+            <span class="file-label">Licencia de Conducir:</span>
+            <input type="file" accept="image/*">
+            <span class="file-label">Solvencia Policial / Antecedentes:</span>
+            <input type="file" accept="image/*" multiple>
+            
+            <hr style="margin: 15px 0; opacity: 0.2;">
+            <h4>Datos del Vehículo</h4>
+            <input type="text" id="car-model" placeholder="Modelo (Ej: Toyota Corolla 2022)">
+            <input type="text" id="car-plate-input" placeholder="Número de Placa">
+            <span class="file-label">Fotos del Vehículo (Exterior):</span>
+            <input type="file" accept="image/*" multiple>
+        </div>
+
+        <button class="btn-main" onclick="validarYEntrar()">REGISTRARME AHORA</button>
+    </div>
+    
     <div id="cliente-view" class="section">
         <div id="map"></div>
         <div class="card">
@@ -100,7 +123,7 @@
     <div id="driver-view" class="section">
         <div class="card">
             <h4 style="margin:0">Contabilidad (Últimos 5 días)</h4>
-            <div id="driver-stats">Cargando contabilidad...</div>
+            <div id="driver-stats"></div>
         </div>
         <h4 style="color:var(--primary)">Viajes Disponibles</h4>
         <div id="lista-viajes-global"></div>
