@@ -203,7 +203,7 @@
     function initMap() {
         map = new maplibregl.Map({
             container: 'map',
-            style: 'https://api.maptiler.com/maps/streets-v2/style.json?key=GET_YOUR_KEY', 
+            style: 'https://api.maptiler.com/maps/streets-v2/style.json?key=d6H6Jr3vpXuHmOsC5tqr', 
             center: [-89.20, 13.70], zoom: 12
         });
         markerO = new maplibregl.Marker({ color: "#2ecc71", draggable: true });
@@ -263,7 +263,7 @@
         if (data.code === 'Ok') {
             const route = data.routes[0];
             const km = route.distance / 1000;
-            const precioSugerido = km <= 2 ? 2.50 : 2.50 + (km - 2) * 0.45;
+            const precioSugerido = km <= 3 ? km : (3 + (km - 3) * 0.30);
             
             document.getElementById('txt-dist').innerText = km.toFixed(2) + " km";
             document.getElementById('txt-precio').innerText = precioSugerido.toFixed(2);
