@@ -21,13 +21,14 @@
         .section { display: none; }
         .active-section { display: block; }
 
-        .modal-flotante { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 400px; background: white; color: #333; padding: 20px; border-radius: 20px; box-shadow: 0 -5px 20px rgba(0,0,0,0.4); z-index: 2000; display: none; border-top: 5px solid var(--accent); }
-        #chat-area { display: none; background: var(--chat-bg); height: 300px; border-radius: 15px; flex-direction: column; padding: 10px; margin-top: 10px; border: 1px solid #ccc; }
-        #mensajes-lista { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 5px; }
-        .msg { padding: 8px 12px; border-radius: 10px; max-width: 80%; font-size: 14px; }
-        .msg.mio { align-self: flex-end; background: #dcf8c6; }
-        .msg.otro { align-self: flex-start; background: white; }
+        /* Estilo para el botón de GPS dentro del input */
+        .gps-input-container { position: relative; display: flex; align-items: center; }
+        .btn-gps-trigger { 
+            position: absolute; right: 10px; background: var(--primary); color: white; 
+            border: none; border-radius: 8px; padding: 8px; cursor: pointer; z-index: 5;
+        }
 
+        .modal-flotante { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 400px; background: white; color: #333; padding: 20px; border-radius: 20px; box-shadow: 0 -5px 20px rgba(0,0,0,0.4); z-index: 2000; display: none; border-top: 5px solid var(--accent); }
         .suggestions { background: white; color: black; position: absolute; width: 100%; z-index: 1000; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); max-height: 200px; overflow-y: auto; margin-top: -5px; }
         .suggestion-item { padding: 12px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 14px; }
         
@@ -35,6 +36,9 @@
         th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
         .resumen-caja { background: #f1c40f; color: #000; padding: 15px; border-radius: 15px; margin-top: 10px; font-weight: bold; text-align: center; }
         .oferta-tag { background: #f9f9f9; padding: 15px; border-radius: 12px; margin: 10px 0; border-left: 5px solid var(--primary); display: flex; justify-content: space-between; align-items: center; color: #333; }
+        .msg { padding: 8px 12px; border-radius: 10px; max-width: 80%; font-size: 14px; }
+        .msg.mio { align-self: flex-end; background: #dcf8c6; }
+        .msg.otro { align-self: flex-start; background: white; }
     </style>
 </head>
 <body>
@@ -68,8 +72,9 @@
     <div id="cliente-view" class="section">
         <div id="map"></div>
         <div class="card">
-            <div style="position:relative;">
+            <div class="gps-input-container">
                 <input id="origin" placeholder="📍 Origen" oninput="buscarDireccion(this, 'sug-origin')">
+                <button class="btn-gps-trigger" onclick="obtenerUbicacionGPS()">🎯</button>
                 <div id="sug-origin" class="suggestions"></div>
             </div>
             <div style="position:relative;">
@@ -91,7 +96,7 @@
                     <input id="input-msg-cliente" placeholder="Escribe..." style="margin:0;">
                     <button onclick="enviarMensaje('cliente')" style="background:var(--primary); color:white; border:none; padding:10px; border-radius:10px;">Enviar</button>
                 </div>
-                <button class="btn-action" style="background:var(--accent); color:black;" onclick="finalizarViaje()">FINALIZAR VIAJE</button>
+                <button class="btn-action" style="background:var(--accent); color:black; margin-top:10px;" onclick="finalizarViaje()">FINALIZAR VIAJE</button>
             </div>
         </div>
     </div>
@@ -117,21 +122,10 @@
 
     <div id="modal-oferta-cliente" class="modal-flotante">
         <h3 style="margin-top:0">¡Nueva Oferta!</h3>
-        <p id="info-oferta-driver">El conductor propone un nuevo precio.</p>
+        <p id="info-oferta-driver"></p>
         <div style="display:flex; gap:10px;">
             <button class="btn-action" onclick="responderOferta(true)">ACEPTAR</button>
             <button class="btn-action" style="background:var(--danger)" onclick="responderOferta(false)">RECHAZAR</button>
-        </div>
-    </div>
-
-    <div id="admin-panel" class="section">
-        <div class="card">
-            <h3 style="text-align:center;">🛡️ Administración</h3>
-            <table id="tabla-usuarios">
-                <thead><tr><th>Usuario</th><th>WhatsApp</th><th>Acción</th></tr></thead>
-                <tbody id="lista-usuarios-admin"></tbody>
-            </table>
-            <button class="btn-action" style="margin-top:15px; background:#444;" onclick="location.reload()">CERRAR</button>
         </div>
     </div>
 
@@ -140,7 +134,7 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs, query, where, onSnapshot, serverTimestamp, doc, updateDoc, deleteDoc, orderBy, limit, getDoc } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, getDocs, query, where, onSnapshot, serverTimestamp, doc, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-auth.js";
 
     const firebaseConfig = {
@@ -160,31 +154,49 @@
     let coordsOrigen = null, coordsDestino = null;
     let isReg = false, miRol = "", miUid = "", miNombre = "", viajeActivoId = null;
 
-    // --- PAÍSES ---
-    async function cargarPaises() {
-        const sel = document.getElementById('reg-prefijo');
-        try {
-            const res = await fetch('https://restcountries.com/v3.1/all?fields=name,idd,cca2');
-            const data = await res.json();
-            data.sort((a,b)=> a.name.common.localeCompare(b.name.common)).forEach(c => {
-                const code = c.idd.root + (c.idd.suffixes ? c.idd.suffixes[0] : "");
-                if(code) {
-                    const opt = new Option(`${c.cca2} (${code})`, code);
-                    if(c.cca2 === 'SV') opt.selected = true;
-                    sel.add(opt);
-                }
-            });
-        } catch(e) { sel.add(new Option("+503", "+503")); }
-    }
-    cargarPaises();
+    // --- GPS REAL ---
+    window.obtenerUbicacionGPS = () => {
+        if (!navigator.geolocation) return alert("Tu navegador no soporta GPS");
+        
+        const btn = document.querySelector('.btn-gps-trigger');
+        btn.innerText = "⏳";
+
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+            const lat = pos.coords.latitude;
+            const lon = pos.coords.longitude;
+            coordsOrigen = [lat, lon];
+
+            // 1. Mover mapa y poner marcador
+            if (markerOrigen) lMap.removeLayer(markerOrigen);
+            markerOrigen = L.marker(coordsOrigen).addTo(lMap).bindPopup("Tu ubicación").openPopup();
+            lMap.flyTo(coordsOrigen, 16);
+
+            // 2. Reverse Geocoding para poner nombre de calle
+            try {
+                const res = await fetch(`https://photon.komoot.io/reverse?lon=${lon}&lat=${lat}`);
+                const data = await res.json();
+                const nombre = data.features[0].properties.name || "Mi ubicación";
+                document.getElementById('origin').value = nombre;
+            } catch(e) {
+                document.getElementById('origin').value = "Ubicación actual";
+            }
+            btn.innerText = "🎯";
+        }, (err) => {
+            alert("Error al obtener GPS. Activa los permisos.");
+            btn.innerText = "🎯";
+        });
+    };
 
     // --- MAPA ---
     window.initLeaflet = () => {
         if (lMap) return;
         lMap = L.map('map').setView([13.7, -89.2], 12);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(lMap);
+        // Intentar GPS al inicio
+        window.obtenerUbicacionGPS();
     };
 
+    // --- BÚSQUEDA Y RUTA ---
     window.buscarDireccion = async (input, targetId) => {
         const box = document.getElementById(targetId);
         if (input.value.length < 3) { box.innerHTML = ""; return; }
@@ -215,7 +227,7 @@
     };
 
     window.calcularRutaOSRM = async () => {
-        if (!coordsOrigen || !coordsDestino) return alert("Selecciona puntos de la lista");
+        if (!coordsOrigen || !coordsDestino) return alert("Selecciona origen y destino");
         const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${coordsOrigen[1]},${coordsOrigen[0]};${coordsDestino[1]},${coordsDestino[0]}?overview=full&geometries=geojson`);
         const data = await res.json();
         if (data.code === 'Ok') {
@@ -232,37 +244,32 @@
         }
     };
 
-    // CLIENTE PUBLICA
+    // --- LOGICA DE VIAJE ---
     window.publicarViaje = async () => {
         const sugerido = document.getElementById("priceMaps").innerText.replace("$","");
         const oferta = document.getElementById("oferta-cliente").value;
         const btn = document.getElementById("btn-solicitar");
-        
         btn.innerText = "BUSCANDO CONDUCTOR...";
         btn.disabled = true;
 
         const docRef = await addDoc(collection(db, "viajes"), {
-            clienteId: miUid,
-            clienteNombre: miNombre,
+            clienteId: miUid, clienteNombre: miNombre,
             origen: document.getElementById("origin").value,
             destino: document.getElementById("destination").value,
             precioSugerido: parseFloat(sugerido),
             ofertaActual: parseFloat(oferta),
-            estado: "buscando",
-            timestamp: serverTimestamp()
+            estado: "buscando", timestamp: serverTimestamp()
         });
         viajeActivoId = docRef.id;
         escucharViajeCliente(docRef.id);
     };
 
-    // CLIENTE ESCUCHA RESPUESTAS
     function escucharViajeCliente(id) {
         onSnapshot(doc(db, "viajes", id), (snap) => {
             const v = snap.data();
             if (!v) return;
-
             if (v.estado === "negociando") {
-                document.getElementById("info-oferta-driver").innerText = `${v.driverNombre} ofrece $${v.contraOferta}. (App sugiere $${v.precioSugerido})`;
+                document.getElementById("info-oferta-driver").innerText = `${v.driverNombre} ofrece $${v.contraOferta}.`;
                 document.getElementById("modal-oferta-cliente").style.display = "block";
             }
             if (v.estado === "aceptado") {
@@ -271,27 +278,21 @@
                 document.getElementById("chat-area-cliente").style.display = "block";
                 conectarChat(id, 'cliente');
             }
-            if (v.estado === "finalizado") {
-                alert("Viaje finalizado.");
-                location.reload();
-            }
+            if (v.estado === "finalizado") location.reload();
         });
     }
 
     window.responderOferta = async (aceptar) => {
+        const vSnap = await getDoc(doc(db, "viajes", viajeActivoId));
         if (aceptar) {
-            const vSnap = await getDoc(doc(db, "viajes", viajeActivoId));
-            const vData = vSnap.data();
-            await updateDoc(doc(db, "viajes", viajeActivoId), {
-                estado: "aceptado",
-                precioFinal: vData.contraOferta
-            });
+            await updateDoc(doc(db, "viajes", viajeActivoId), { estado: "aceptado", precioFinal: vSnap.data().contraOferta });
         } else {
-            await updateDoc(doc(db, "viajes", viajeActivoId), { estado: "buscando", contraOferta: null });
+            await updateDoc(doc(db, "viajes", viajeActivoId), { estado: "buscando" });
             document.getElementById("modal-oferta-cliente").style.display = "none";
         }
     };
 
+    // --- CONDUCTOR ---
     function cargarViajesDisponibles() {
         const q = query(collection(db, "viajes"), where("estado", "==", "buscando"));
         onSnapshot(q, (snap) => {
@@ -299,29 +300,19 @@
             snap.forEach(d => {
                 const v = d.data();
                 h += `<div class="oferta-tag">
-                    <div style="flex:1">
-                        <b>${v.clienteNombre}</b><br>
-                        <small>${v.origen.substring(0,25)}...</small><br>
-                        Sugerido: $${v.precioSugerido} | <b>Oferta: $${v.ofertaActual}</b>
-                    </div>
+                    <div style="flex:1"><b>${v.clienteNombre}</b><br><small>${v.origen.substring(0,25)}...</small><br>Oferta: $${v.ofertaActual}</div>
                     <button class="btn-action" style="width:80px; background:var(--accent); color:black;" onclick="enviarContraOferta('${d.id}', ${v.ofertaActual})">OFERTAR</button>
                 </div>`;
             });
-            document.getElementById("lista-viajes-global").innerHTML = h || "No hay viajes solicitados.";
+            document.getElementById("lista-viajes-global").innerHTML = h || "No hay viajes.";
         });
     }
 
     window.enviarContraOferta = async (id, ofertaCli) => {
-        const contra = prompt("El cliente ofrece $" + ofertaCli + ". ¿Cuánto cobras tú?", ofertaCli);
+        const contra = prompt("El cliente ofrece $" + ofertaCli + ". ¿Tu precio?", ofertaCli);
         if (contra) {
-            await updateDoc(doc(db, "viajes", id), {
-                driverId: miUid,
-                driverNombre: miNombre,
-                contraOferta: parseFloat(contra),
-                estado: "negociando"
-            });
+            await updateDoc(doc(db, "viajes", id), { driverId: miUid, driverNombre: miNombre, contraOferta: parseFloat(contra), estado: "negociando" });
             viajeActivoId = id;
-            alert("Oferta enviada. Espera que el cliente acepte.");
             onSnapshot(doc(db, "viajes", id), (snap) => {
                 if (snap.data().estado === "aceptado") {
                     document.getElementById("lista-viajes-global").style.display = "none";
@@ -332,114 +323,32 @@
         }
     };
 
-    // --- CHAT CORREGIDO (Sin orderBy, ordenado localmente) ---
+    // --- CHAT Y AUTH ---
     function conectarChat(viajeId, rol) {
         const q = query(collection(db, "mensajes"), where("viajeId", "==", viajeId));
         const boxId = rol === 'cliente' ? 'chat-box-cliente' : 'chat-box-driver';
-        
         onSnapshot(q, (snap) => {
-            let mensajes = [];
-            snap.forEach(m => {
-                mensajes.push({ id: m.id, ...m.data() });
-            });
-            
-            // Ordenamos localmente por timestamp
-            mensajes.sort((a, b) => {
-                const timeA = a.time ? a.time.toMillis() : 0;
-                const timeB = b.time ? b.time.toMillis() : 0;
-                return timeA - timeB;
-            });
-
-            let h = "";
-            mensajes.forEach(data => {
-                const clase = data.emisorId === miUid ? 'mio' : 'otro';
-                h += `<div class="msg ${clase}">${data.texto}</div>`;
-            });
-            const box = document.getElementById(boxId);
-            box.innerHTML = h;
-            box.scrollTop = box.scrollHeight;
+            let msgs = [];
+            snap.forEach(m => msgs.push(m.data()));
+            msgs.sort((a,b) => (a.time?.toMillis() || 0) - (b.time?.toMillis() || 0));
+            document.getElementById(boxId).innerHTML = msgs.map(m => `<div class="msg ${m.emisorId === miUid ? 'mio' : 'otro'}">${m.texto}</div>`).join('');
+            document.getElementById(boxId).scrollTop = 9999;
         });
     }
 
     window.enviarMensaje = async (rol) => {
         const inp = document.getElementById(rol === 'cliente' ? 'input-msg-cliente' : 'input-msg-driver');
         if (!inp.value) return;
-        await addDoc(collection(db, "mensajes"), {
-            viajeId: viajeActivoId,
-            emisorId: miUid,
-            texto: inp.value,
-            time: serverTimestamp()
-        });
+        await addDoc(collection(db, "mensajes"), { viajeId: viajeActivoId, emisorId: miUid, texto: inp.value, time: serverTimestamp() });
         inp.value = "";
     };
 
     window.finalizarViaje = async () => {
-        if (confirm("¿Confirmas que el viaje ha terminado?")) {
-            const vSnap = await getDoc(doc(db, "viajes", viajeActivoId));
-            const vData = vSnap.data();
-            const hoy = new Date().toISOString().split('T')[0];
-
-            await updateDoc(doc(db, "viajes", viajeActivoId), { 
-                estado: "finalizado",
-                fechaFinalizado: hoy 
-            });
+        if (confirm("¿Finalizar viaje?")) {
+            await updateDoc(doc(db, "viajes", viajeActivoId), { estado: "finalizado", fechaFinalizado: new Date().toISOString().split('T')[0] });
             location.reload();
         }
     };
-
-    async function mostrarContabilidad() {
-        const hoy = new Date();
-        const dias7 = [];
-        for(let i=0; i<5; i++) {
-            let d = new Date();
-            d.setDate(hoy.getDate() - i);
-            dias7.push(d.toISOString().split('T')[0]);
-        }
-
-        const q = query(collection(db, "viajes"), where("driverId", "==", miUid), where("estado", "==", "finalizado"));
-        const snap = await getDocs(q);
-        
-        let subTotales = {};
-        dias7.forEach(d => subTotales[d] = 0);
-
-        snap.forEach(doc => {
-            const v = doc.data();
-            if (subTotales[v.fechaFinalizado] !== undefined) {
-                subTotales[v.fechaFinalizado] += v.precioFinal || 0;
-            }
-        });
-
-        let tabla = `<table><tr><th>Fecha</th><th>Total</th><th>Comisión (8%)</th></tr>`;
-        let sumaTotal = 0;
-        
-        dias7.forEach(dia => {
-            const totalDia = subTotales[dia];
-            const comision = totalDia * 0.08;
-            sumaTotal += totalDia;
-            tabla += `<tr><td>${dia}</td><td>$${totalDia.toFixed(2)}</td><td style="color:red">-$${comision.toFixed(2)}</td></tr>`;
-        });
-        
-        const comisionFinal = sumaTotal * 0.08;
-        tabla += `</table><div class="resumen-caja">Total 5 días: $${sumaTotal.toFixed(2)}<br>DEUDA COMISIÓN: $${comisionFinal.toFixed(2)}</div>`;
-        document.getElementById("driver-stats").innerHTML = tabla;
-    }
-
-    document.addEventListener('keydown', async (e) => {
-        if (e.key.toLowerCase() === 'w') {
-            const pass = prompt("Acceso Admin:");
-            if (pass === "Cordia1987") {
-                document.querySelectorAll('.section').forEach(s => s.classList.remove('active-section'));
-                document.getElementById('admin-panel').classList.add('active-section');
-                const snap = await getDocs(collection(db, "usuarios"));
-                let h = "";
-                snap.forEach(d => {
-                    const u = d.data();
-                    h += `<tr><td>${u.nombre}</td><td>${u.whatsapp}</td><td><button onclick="eliminarUsuario('${d.id}')">Eliminar</button></td></tr>`;
-                });
-                document.getElementById('lista-usuarios-admin').innerHTML = h;
-            }
-        }
-    });
 
     window.switchAuth = () => {
         isReg = !isReg;
@@ -454,8 +363,7 @@
             if(isReg) {
                 const uc = await createUserWithEmailAndPassword(auth, mail, pass);
                 await addDoc(collection(db, "usuarios"), {
-                    uid: uc.user.uid,
-                    rol: document.getElementById('reg-rol').value,
+                    uid: uc.user.uid, rol: document.getElementById('reg-rol').value,
                     nombre: document.getElementById('reg-nombre').value,
                     whatsapp: document.getElementById('reg-prefijo').value + document.getElementById('reg-tel').value,
                 });
@@ -469,17 +377,15 @@
             const q = query(collection(db, "usuarios"), where("uid", "==", u.uid));
             const s = await getDocs(q);
             s.forEach(d => {
-                miRol = d.data().rol;
-                miNombre = d.data().nombre;
+                miRol = d.data().rol; miNombre = d.data().nombre;
                 document.getElementById('auth-container').style.display='none';
                 document.getElementById('btn-logout').style.display='block';
                 if(miRol === 'cliente') {
                     document.getElementById('cliente-view').classList.add('active-section');
-                    initLeaflet();
+                    window.initLeaflet();
                 } else {
                     document.getElementById('driver-view').classList.add('active-section');
                     cargarViajesDisponibles();
-                    mostrarContabilidad();
                 }
             });
         }
@@ -487,5 +393,5 @@
 
     window.cerrarSesion = () => signOut(auth).then(()=>location.reload());
 </script>
-</body> 
+</body>
 </html>
