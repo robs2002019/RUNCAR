@@ -335,6 +335,7 @@
                     <div style="flex:1">
                         <b>${v.clienteNombre}</b><br>
                         <small>${v.origen.substring(0,30)}...</small><br>
+                        <small>${v.destino.substring(0,30)}...</small><br>
                         <b>Oferta: $${v.ofertaActual}</b>
                     </div>
                     <button class="btn-action" style="width:80px; background:var(--accent); color:black;" onclick="enviarContraOferta('${d.id}', ${v.ofertaActual})">OFERTAR</button>
