@@ -274,26 +274,32 @@
 
     // --- LÓGICA DE VIAJES (Firebase) ---
     window.publicarViaje = async () => {
-        const sugerido = document.getElementById("priceMaps").innerText.replace("$","");
-        const oferta = document.getElementById("oferta-cliente").value;
-        const btn = document.getElementById("btn-solicitar");
-        btn.innerText = "BUSCANDO...";
-        btn.disabled = true;
+    if (!coordsOrigen || !coordsDestino) return alert("Faltan coordenadas de origen o destino");
+    
+    const sugerido = document.getElementById("priceMaps").innerText.replace("$","");
+    const oferta = document.getElementById("oferta-cliente").value;
+    const btn = document.getElementById("btn-solicitar");
+    
+    btn.innerText = "BUSCANDO...";
+    btn.disabled = true;
 
-        const docRef = await addDoc(collection(db, "viajes"), {
-            clienteId: miUid,
-            clienteNombre: miNombre,
-            origen: document.getElementById("origin").value,
-            destino: document.getElementById("destination").value,
-            precioSugerido: parseFloat(sugerido),
-            ofertaActual: parseFloat(oferta),
-            estado: "buscando",
-            timestamp: serverTimestamp()
-        });
-        viajeActivoId = docRef.id;
-        escucharViajeCliente(docRef.id);
-    };
-
+    const docRef = await addDoc(collection(db, "viajes"), {
+        clienteId: miUid,
+        clienteNombre: miNombre,
+        origen: document.getElementById("origin").value,
+        destino: document.getElementById("destination").value,
+        // Guardamos las coordenadas para el driver
+        coordsOrigen: { lat: coordsOrigen[0], lon: coordsOrigen[1] },
+        coordsDestino: { lat: coordsDestino[0], lon: coordsDestino[1] },
+        precioSugerido: parseFloat(sugerido),
+        ofertaActual: parseFloat(oferta),
+        estado: "buscando",
+        timestamp: serverTimestamp()
+    });
+    
+    viajeActivoId = docRef.id;
+    escucharViajeCliente(docRef.id);
+};
     function escucharViajeCliente(id) {
         onSnapshot(doc(db, "viajes", id), (snap) => {
             const v = snap.data();
@@ -326,23 +332,36 @@
     };
 
     function cargarViajesDisponibles() {
-        const q = query(collection(db, "viajes"), where("estado", "==", "buscando"));
-        onSnapshot(q, (snap) => {
-            let h = "";
-            snap.forEach(d => {
-                const v = d.data();
-                h += `<div class="oferta-tag">
-                    <div style="flex:1">
-                        <b>${v.clienteNombre}</b><br>
-                        <small>${v.origen.substring(0,30)}...</small><br>
-                        <b>Oferta: $${v.ofertaActual}</b>
+    const q = query(collection(db, "viajes"), where("estado", "==", "buscando"));
+    onSnapshot(q, (snap) => {
+        let h = "";
+        snap.forEach(d => {
+            const v = d.data();
+            // Creamos los links a Google Maps usando las coordenadas guardadas
+            const linkOrigen = `https://www.google.com/maps/search/?api=1&query=${v.coordsOrigen.lat},${v.coordsOrigen.lon}`;
+            const linkDestino = `https://www.google.com/maps/search/?api=1&query=${v.coordsDestino.lat},${v.coordsDestino.lon}`;
+
+            h += `<div class="oferta-tag" style="flex-direction: column; align-items: flex-start; gap: 10px;">
+                <div style="width: 100%;">
+                    <b style="color:var(--primary); font-size: 1.1em;">${v.clienteNombre}</b> 
+                    <span style="float:right; background:#eee; padding:2px 8px; border-radius:5px;">$${v.ofertaActual}</span>
+                    <br>
+                    <div style="margin-top:8px; font-size: 13px;">
+                        <b>📍 Origen:</b> ${v.origen} <br>
+                        <b>🏁 Destino:</b> ${v.destino}
                     </div>
-                    <button class="btn-action" style="width:80px; background:var(--accent); color:black;" onclick="enviarContraOferta('${d.id}', ${v.ofertaActual})">OFERTAR</button>
-                </div>`;
-            });
-            document.getElementById("lista-viajes-global").innerHTML = h || "Esperando viajes...";
+                </div>
+                
+                <div style="display: flex; gap: 5px; width: 100%;">
+                    <a href="${linkOrigen}" target="_blank" class="btn-action" style="background:#444; text-decoration:none; text-align:center; font-size:12px; padding:10px;">VER ORIGEN</a>
+                    <a href="${linkDestino}" target="_blank" class="btn-action" style="background:#444; text-decoration:none; text-align:center; font-size:12px; padding:10px;">VER DESTINO</a>
+                    <button class="btn-action" style="background:var(--accent); color:black; padding:10px;" onclick="enviarContraOferta('${d.id}', ${v.ofertaActual})">OFERTAR</button>
+                </div>
+            </div>`;
         });
-    }
+        document.getElementById("lista-viajes-global").innerHTML = h || "Esperando viajes...";
+    });
+}
 
     window.enviarContraOferta = async (id, ofertaCli) => {
         const contra = prompt("El cliente ofrece $" + ofertaCli + ". ¿Cuánto cobras?", ofertaCli);
