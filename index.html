@@ -1,829 +1,247 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RUN CAR - Oficial</title>
 
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@23.0.11/build/css/intlTelInput.css"/>
 
-<title>RUN CAR</title>
-
-<!-- ===================================================== -->
-<!-- LIBRERIAS -->
-<!-- ===================================================== -->
-
-<link rel="stylesheet"
-href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-
-<link rel="stylesheet"
-href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css"/>
-
-<link rel="stylesheet"
-href="https://cdn.jsdelivr.net/npm/intl-tel-input@23.0.11/build/css/intlTelInput.css"/>
-
-<!-- ===================================================== -->
-<!-- ESTILOS -->
-<!-- ===================================================== -->
-
-<style>
-
-*{
-    margin:0;
-    padding:0;
-    box-sizing:border-box;
-    font-family:Arial;
-}
-
-body{
-    background:#0f172a;
-    color:white;
-}
-
-header{
-    background:#111827;
-    padding:20px;
-    text-align:center;
-    font-size:28px;
-    font-weight:bold;
-}
-
-.container{
-    padding:15px;
-}
-
-.card{
-    background:#1e293b;
-    padding:15px;
-    border-radius:15px;
-    margin-bottom:20px;
-}
-
-h2{
-    margin-bottom:15px;
-    color:#38bdf8;
-}
-
-input,
-select,
-textarea{
-    width:100%;
-    padding:12px;
-    margin-top:10px;
-    border:none;
-    border-radius:10px;
-    background:#334155;
-    color:white;
-}
-
-button{
-    width:100%;
-    padding:14px;
-    margin-top:12px;
-    border:none;
-    border-radius:10px;
-    background:#0ea5e9;
-    color:white;
-    font-size:16px;
-    cursor:pointer;
-}
-
-button:hover{
-    background:#0284c7;
-}
-
-#map{
-    width:100%;
-    height:500px;
-    border-radius:15px;
-    margin-top:15px;
-}
-
-.estado{
-    padding:10px;
-    border-radius:10px;
-    margin-top:10px;
-    text-align:center;
-    font-weight:bold;
-}
-
-.online{
-    background:green;
-}
-
-.offline{
-    background:red;
-}
-
-.viaje{
-    background:orange;
-}
-
-.chat-box{
-    height:250px;
-    overflow-y:auto;
-    background:#0f172a;
-    padding:10px;
-    border-radius:10px;
-    margin-top:10px;
-}
-
-.mensaje{
-    background:#334155;
-    padding:10px;
-    border-radius:10px;
-    margin-bottom:10px;
-}
-
-.admin-grid{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:10px;
-}
-
-.info-box{
-    margin-top:15px;
-    background:#111827;
-    padding:15px;
-    border-radius:12px;
-    font-size:20px;
-    font-weight:bold;
-}
-
-</style>
-
+    <style>
+        *{ margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body{ background:#0f172a; color:white; }
+        header{ background:#111827; padding:20px; text-align:center; font-size:28px; font-weight:bold; border-bottom: 2px solid #0ea5e9; }
+        .container{ padding:15px; max-width: 800px; margin: auto; }
+        .card{ background:#1e293b; padding:20px; border-radius:15px; margin-bottom:20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        h2{ margin-bottom:15px; color:#38bdf8; font-size: 1.2rem; }
+        input, select, textarea{ width:100%; padding:12px; margin-top:10px; border:1px solid #334155; border-radius:10px; background:#334155; color:white; }
+        label{ display: block; margin-top: 15px; font-size: 0.9rem; color: #94a3b8; }
+        button{ width:100%; padding:14px; margin-top:12px; border:none; border-radius:10px; background:#0ea5e9; color:white; font-size:16px; font-weight: bold; cursor:pointer; transition: 0.3s; }
+        button:hover{ background:#0284c7; }
+        #map{ width:100%; height:400px; border-radius:15px; margin-top:15px; z-index: 1; }
+        .info-box{ margin-top:15px; background:#111827; padding:15px; border-radius:12px; font-size:18px; text-align: center; border-left: 4px solid #0ea5e9; }
+        .chat-box{ height:200px; overflow-y:auto; background:#0f172a; padding:10px; border-radius:10px; margin-top:10px; border: 1px solid #334155; }
+        .mensaje{ background:#334155; padding:8px 12px; border-radius:10px; margin-bottom:8px; font-size: 0.9rem; }
+        .admin-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+        .estado { padding:10px; border-radius:10px; text-align:center; margin-top:5px; font-weight:bold; }
+        .online { background: #16a34a; }
+        .offline { background: #dc2626; }
+    </style>
 </head>
-
 <body>
 
-<header>
-RUN CAR
-</header>
+<header>RUN CAR</header>
 
 <div class="container">
 
-<!-- ===================================================== -->
-<!-- LOGIN -->
-<!-- ===================================================== -->
+    <div class="card" id="loginSection">
+        <h2>Registro / Login</h2>
+        <button id="googleLoginBtn">Continuar con Google</button>
+        <p id="userEmail" style="text-align:center; margin-top:10px; color:#38bdf8;"></p>
+    </div>
 
-<div class="card">
+    <div class="card">
+        <h2>Perfil Cliente</h2>
+        <input type="text" id="clienteNombre" placeholder="Nombre completo">
+        <input type="text" id="clientePais" placeholder="País">
+        <input type="text" id="clienteCiudad" placeholder="Ciudad">
+        <div style="margin-top:10px;">
+            <input type="tel" id="telefonoCliente">
+        </div>
+        <label>Foto de perfil</label>
+        <input type="file" id="clienteFoto" accept="image/*">
+        <button id="guardarCliente">Guardar Perfil Cliente</button>
+    </div>
 
-<h2>Registro / Login</h2>
+    <div class="card">
+        <h2>Perfil Conductor (Driver)</h2>
+        <input type="text" id="driverNombre" placeholder="Nombre completo">
+        <div style="margin-top:10px;">
+            <input type="tel" id="telefonoDriver">
+        </div>
+        <input type="text" id="marcaVehiculo" placeholder="Marca (Ej: Toyota)">
+        <input type="text" id="modeloVehiculo" placeholder="Modelo (Ej: Corolla)">
+        <input type="number" id="anoVehiculo" placeholder="Año (Mínimo 2014)">
+        <input type="text" id="placaVehiculo" placeholder="Número de placa">
+        
+        <label>Documentación (Fotos/PDF)</label>
+        <input type="file" id="fotoRostro" accept="image/*">
+        <label>Licencia de Conducir</label>
+        <input type="file" id="licenciaConducir">
+        <button id="guardarDriver">Registrarse como Driver</button>
+    </div>
 
-<button id="googleLoginBtn">
-Continuar con Google
-</button>
+    <div class="card">
+        <h2>Solicitar Viaje</h2>
+        <input type="text" id="puntoA" placeholder="Origen (GPS actual...)" readonly>
+        <input type="text" id="puntoB" placeholder="Destino (Click en el mapa)">
+        
+        <div id="map"></div>
 
-</div>
+        <div class="info-box">
+            Distancia: <span id="distanciaTexto">0 km</span><br>
+            Sugerencia: <span id="costoViaje">$0.00</span>
+        </div>
 
-<!-- ===================================================== -->
-<!-- REGISTRO CLIENTE -->
-<!-- ===================================================== -->
+        <input type="number" id="ofertaCliente" placeholder="Tu oferta ($)">
+        <button id="calcularRutaBtn">Calcular Ruta</button>
+        <button id="enviarSolicitud" style="background:#16a34a;">Pedir RUN CAR</button>
+    </div>
 
-<div class="card">
-
-<h2>Registro Cliente</h2>
-
-<input type="text" id="clienteNombre"
-placeholder="Nombre completo">
-
-<input type="text" id="clientePais"
-placeholder="País">
-
-<input type="text" id="clienteCiudad"
-placeholder="Ciudad">
-
-<input id="telefonoCliente">
-
-<label>Foto rostro</label>
-<input type="file" id="clienteFoto">
-
-<button id="guardarCliente">
-Guardar Cliente
-</button>
-
-</div>
-
-<!-- ===================================================== -->
-<!-- REGISTRO DRIVER -->
-<!-- ===================================================== -->
-
-<div class="card">
-
-<h2>Registro Driver</h2>
-
-<input type="text" id="driverNombre"
-placeholder="Nombre completo">
-
-<input id="telefonoDriver">
-
-<input type="text" id="marcaVehiculo"
-placeholder="Marca vehículo">
-
-<input type="text" id="modeloVehiculo"
-placeholder="Modelo vehículo">
-
-<input type="number" id="anoVehiculo"
-placeholder="Año vehículo">
-
-<input type="text" id="colorVehiculo"
-placeholder="Color vehículo">
-
-<input type="text" id="placaVehiculo"
-placeholder="Número placa">
-
-<label>Foto rostro</label>
-<input type="file" id="fotoRostro">
-
-<label>Licencia conducir</label>
-<input type="file" id="licenciaConducir">
-
-<label>Solvencia policial</label>
-<input type="file" id="solvenciaPolicial">
-
-<label>Antecedentes penales</label>
-<input type="file" id="antecedentesPenales">
-
-<label>Tarjeta circulación</label>
-<input type="file" id="tarjetaCirculacion">
-
-<label>Foto placa</label>
-<input type="file" id="fotoPlaca">
-
-<label>Fotos vehículo</label>
-<input type="file" id="fotosVehiculo" multiple>
-
-<button id="guardarDriver">
-Guardar Driver
-</button>
+    <div class="card">
+        <h2>Estado del Viaje</h2>
+        <div id="estadoViaje" class="info-box">Esperando solicitud...</div>
+        <div id="temporizador" style="font-size:20px; text-align:center; margin:10px;">30</div>
+        
+        <div class="chat-box" id="chatMensajes"></div>
+        <div style="display:flex; gap:5px;">
+            <input type="text" id="mensajeChat" placeholder="Mensaje...">
+            <button id="enviarMensaje" style="width:100px;">Enviar</button>
+        </div>
+    </div>
 
 </div>
-
-<!-- ===================================================== -->
-<!-- SOLICITAR VIAJE -->
-<!-- ===================================================== -->
-
-<div class="card">
-
-<h2>Solicitar Viaje</h2>
-
-<input type="text" id="puntoA"
-placeholder="Punto A">
-
-<input type="text" id="puntoB"
-placeholder="Punto B">
-
-<div id="map"></div>
-
-<div class="info-box">
-Distancia:
-<span id="distanciaTexto">0 km</span>
-</div>
-
-<div class="info-box">
-Costo del viaje:
-<span id="costoViaje">$0.00</span>
-</div>
-
-<input type="number"
-id="numeroPersonas"
-placeholder="Número personas">
-
-<input type="number"
-id="numeroBebes"
-placeholder="Bebés">
-
-<input type="number"
-id="numeroMascotas"
-placeholder="Mascotas">
-
-<input type="number"
-id="cargaKg"
-placeholder="Carga en KG">
-
-<input type="number"
-id="ofertaApp"
-placeholder="Costo APP">
-
-<input type="number"
-id="ofertaCliente"
-placeholder="Oferta Cliente">
-
-<button id="calcularRuta">
-Calcular Viaje
-</button>
-
-<button id="enviarSolicitud">
-Enviar Solicitud
-</button>
-
-</div>
-
-<!-- ===================================================== -->
-<!-- ESTADO VIAJE -->
-<!-- ===================================================== -->
-
-<div class="card">
-
-<h2>Estado del Viaje</h2>
-
-<div id="estadoViaje"
-class="info-box">
-
-Buscando conductor...
-
-</div>
-
-<div id="temporizador"
-style="
-margin-top:10px;
-font-size:25px;
-text-align:center;
-">
-30
-</div>
-
-</div>
-
-<!-- ===================================================== -->
-<!-- PANEL DRIVER -->
-<!-- ===================================================== -->
-
-<div class="card">
-
-<h2>Panel Driver</h2>
-
-<button id="activarOnline">
-ACTIVAR ONLINE
-</button>
-
-<div class="estado online">
-🟢 ONLINE
-</div>
-
-<div class="estado offline">
-🔴 OFFLINE
-</div>
-
-<div class="estado viaje">
-🟡 EN VIAJE
-</div>
-
-</div>
-
-<!-- ===================================================== -->
-<!-- DRIVERS ONLINE -->
-<!-- ===================================================== -->
-
-<div class="card">
-
-<h2>Drivers Cercanos</h2>
-
-<div id="driversOnline">
-
-Sin drivers disponibles
-
-</div>
-
-</div>
-
-<!-- ===================================================== -->
-<!-- POPUP VIAJE -->
-<!-- ===================================================== -->
-
-<div class="card">
-
-<h2>Solicitud Driver</h2>
-
-<div id="nombreCliente">
-Cliente:
-</div>
-
-<div id="distanciaDriver">
-Distancia:
-</div>
-
-<div id="ofertaDriver">
-Oferta:
-</div>
-
-<button id="aceptarViaje">
-Aceptar
-</button>
-
-<button id="rechazarViaje">
-Rechazar
-</button>
-
-<input type="number"
-id="contraOfertaInput"
-placeholder="Contraoferta">
-
-<button id="enviarContraOferta">
-Enviar Contraoferta
-</button>
-
-</div>
-
-<!-- ===================================================== -->
-<!-- CHAT -->
-<!-- ===================================================== -->
-
-<div class="card">
-
-<h2>Chat Cliente / Driver</h2>
-
-<div class="chat-box"
-id="chatMensajes">
-
-<div class="mensaje">
-Tu driver va en camino 🚖
-</div>
-
-</div>
-
-<input type="text"
-id="mensajeChat"
-placeholder="Escribir mensaje">
-
-<button id="enviarMensaje">
-Enviar
-</button>
-
-</div>
-
-<!-- ===================================================== -->
-<!-- FINALIZAR VIAJE -->
-<!-- ===================================================== -->
-
-<div class="card">
-
-<h2>Finalizar Viaje</h2>
-
-<button id="finalizarViaje">
-Finalizar y Cobrar
-</button>
-
-</div>
-
-<!-- ===================================================== -->
-<!-- CALIFICACION -->
-<!-- ===================================================== -->
-
-<div class="card">
-
-<h2>Calificación</h2>
-
-<select id="calificacion">
-
-<option value="5">⭐⭐⭐⭐⭐</option>
-<option value="4">⭐⭐⭐⭐</option>
-<option value="3">⭐⭐⭐</option>
-<option value="2">⭐⭐</option>
-<option value="1">⭐</option>
-
-</select>
-
-<textarea
-id="comentarioCalificacion"
-placeholder="Comentario">
-</textarea>
-
-<button id="guardarCalificacion">
-Enviar Calificación
-</button>
-
-</div>
-
-<!-- ===================================================== -->
-<!-- HISTORIAL -->
-<!-- ===================================================== -->
-
-<div class="card">
-
-<h2>Últimos 5 días</h2>
-
-<div id="historial">
-
-<div class="mensaje">
-Viaje San Salvador → Santa Ana
-</div>
-
-<div class="mensaje">
-Ganancia: $25
-</div>
-
-</div>
-
-</div>
-
-<!-- ===================================================== -->
-<!-- PANEL FINANCIERO -->
-<!-- ===================================================== -->
-
-<div class="card">
-
-<h2>Panel Financiero</h2>
-
-<div class="mensaje">
-Ganancias Hoy:
-<span id="gananciasHoy">$0</span>
-</div>
-
-<div class="mensaje">
-Viajes Realizados:
-<span id="viajesHoy">0</span>
-</div>
-
-<div class="mensaje">
-Conductores Online:
-<span id="driversActivos">0</span>
-</div>
-
-</div>
-
-<!-- ===================================================== -->
-<!-- ADMIN -->
-<!-- ===================================================== -->
-
-<div class="card">
-
-<h2>Administración</h2>
-
-<div class="admin-grid">
-
-<button>Ver Clientes</button>
-<button>Ver Drivers</button>
-<button>Aprobar Drivers</button>
-<button>Bloquear Usuarios</button>
-<button>Ver Viajes</button>
-<button>Ver Ganancias</button>
-<button>Conductores Online</button>
-<button>Mapa Global</button>
-
-</div>
-
-</div>
-
-<!-- ===================================================== -->
-<!-- FUNCIONES EXTRA -->
-<!-- ===================================================== -->
-
-<div class="card">
-
-<h2>Funciones Extra</h2>
-
-<button>Cancelar Viaje</button>
-<button>Botón SOS</button>
-<button>Compartir Viaje</button>
-<button>Calificar Driver</button>
-<button>Modo Oscuro</button>
-
-</div>
-
-</div>
-
-<!-- ===================================================== -->
-<!-- SCRIPTS -->
-<!-- ===================================================== -->
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
 <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
-
 <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@23.0.11/build/js/intlTelInput.min.js"></script>
 
-<!-- ===================================================== -->
-<!-- FIREBASE -->
-<!-- ===================================================== -->
-
 <script type="module">
-
-import { initializeApp }
-from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-
-import {
-getAuth,
-GoogleAuthProvider,
-signInWithPopup
-}
-from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-
-import {
-getFirestore,
-doc,
-setDoc,
-collection,
-addDoc
-}
-from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-import {
-getStorage,
-ref,
-uploadBytes,
-getDownloadURL
-}
-from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
-
-const firebaseConfig = {
-
-apiKey: "AIzaSyAyRrBUmw4OEzS7EmvK_XmDk6Z5rrjLC3A",
-
-authDomain: "runcar-6eda0.firebaseapp.com",
-
-projectId: "runcar-6eda0",
-
-storageBucket: "runcar-6eda0.firebasestorage.app",
-
-messagingSenderId: "152627344672",
-
-appId: "1:152627344672:web:b420d1c8cbb670069b9345"
-
-};
-
-const app = initializeApp(firebaseConfig);
-
-const auth = getAuth(app);
-
-const db = getFirestore(app);
-
-const storage = getStorage(app);
-
-const provider = new GoogleAuthProvider();
-
-let currentUser = null;
-
-googleLoginBtn.onclick = async ()=>{
-
-const result = await signInWithPopup(auth,provider);
-
-currentUser = result.user;
-
-alert("Bienvenido " + currentUser.displayName);
-
-};
-
-async function subirArchivo(file,path){
-
-const storageRef = ref(storage,path);
-
-await uploadBytes(storageRef,file);
-
-return await getDownloadURL(storageRef);
-
-}
-
-guardarCliente.onclick = async ()=>{
-
-if(!currentUser){
-
-alert("Debes iniciar sesión");
-
-return;
-
-}
-
-const foto = clienteFoto.files[0];
-
-const fotoURL = await subirArchivo(
-foto,
-"clientes/" + currentUser.uid
-);
-
-await setDoc(doc(db,"users",currentUser.uid),{
-
-role:"cliente",
-
-nombre:clienteNombre.value,
-
-pais:clientePais.value,
-
-ciudad:clienteCiudad.value,
-
-telefono:telefonoCliente.value,
-
-foto:fotoURL,
-
-email:currentUser.email
-
-});
-
-alert("Cliente registrado");
-
-};
-
-guardarDriver.onclick = async ()=>{
-
-const year = parseInt(anoVehiculo.value);
-
-if(year < 2014){
-
-alert("Vehículo no permitido");
-
-return;
-
-}
-
-alert("Driver registrado");
-
-};
-
-enviarSolicitud.onclick = async ()=>{
-
-await addDoc(collection(db,"viajes"),{
-
-puntoA:puntoA.value,
-
-puntoB:puntoB.value,
-
-oferta:ofertaCliente.value,
-
-personas:numeroPersonas.value,
-
-bebes:numeroBebes.value,
-
-mascotas:numeroMascotas.value,
-
-carga:cargaKg.value,
-
-estado:"pendiente"
-
-});
-
-alert("Solicitud enviada");
-
-iniciarTemporizador();
-
-};
-
-</script>
-
-<!-- ===================================================== -->
-<!-- MAPA -->
-<!-- ===================================================== -->
-
-<script>
-
-const map = L.map('map')
-.setView([13.6929,-89.2182],13);
-
-L.tileLayer(
-'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-{
-maxZoom:19
-}
-).addTo(map);
-
-let routingControl;
-
-document.getElementById(
-"calcularRuta"
-).onclick = ()=>{
-
-const puntoA = [13.6929,-89.2182];
-
-const puntoB = [13.7000,-89.2000];
-
-if(routingControl){
-
-map.removeControl(routingControl);
-
-}
-
-routingControl = L.Routing.control({
-
-waypoints:[
-
-L.latLng(puntoA[0],puntoA[1]),
-
-L.latLng(puntoB[0],puntoB[1])
-
-],
-
-routeWhileDragging:true
-
-}).addTo(map);
-
-routingControl.on(
-'routesfound',
-function(e){
-
-const routes = e.routes;
-
-const summary = routes[0].summary;
-
-const km =
-summary.totalDistance / 1000;
-
-document.getElementById(
-"distanciaTexto"
-).innerHTML =
-km.toFixed(2) + " km";
-
-/* ===================================================== */
-/* COSTO */
-/* ===================================================== */
-
-let costo = 0;
+    // CONFIGURACIÓN FIREBASE (Mantén la tuya)
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import { getFirestore, doc, setDoc, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyAyRrBUmw4OEzS7EmvK_XmDk6Z5rrjLC3A",
+        authDomain: "runcar-6eda0.firebaseapp.com",
+        projectId: "runcar-6eda0",
+        storageBucket: "runcar-6eda0.firebasestorage.app",
+        messagingSenderId: "152627344672",
+        appId: "1:152627344672:web:b420d1c8cbb670069b9345"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const storage = getStorage(app);
+    const provider = new GoogleAuthProvider();
+
+    let currentUser = null;
+    let userCoords = { lat: 13.6929, lng: -89.2182 }; // Default
+
+    // --- AUTENTICACIÓN ---
+    document.getElementById('googleLoginBtn').onclick = async () => {
+        try {
+            const result = await signInWithPopup(auth, provider);
+            currentUser = result.user;
+            document.getElementById('userEmail').innerText = "Conectado como: " + currentUser.email;
+            alert("Bienvenido " + currentUser.displayName);
+        } catch (error) {
+            console.error(error);
+            alert("Error al iniciar sesión");
+        }
+    };
+
+    // --- SUBIR ARCHIVOS ---
+    async function subirArchivo(file, folder) {
+        if(!file) return "";
+        const storageRef = ref(storage, `${folder}/${currentUser.uid}_${Date.now()}`);
+        await uploadBytes(storageRef, file);
+        return await getDownloadURL(storageRef);
+    }
+
+    // --- GUARDAR CLIENTE ---
+    document.getElementById('guardarCliente').onclick = async () => {
+        if(!currentUser) return alert("Inicia sesión primero");
+        const btn = document.getElementById('guardarCliente');
+        btn.innerText = "Guardando...";
+        
+        const fotoURL = await subirArchivo(document.getElementById('clienteFoto').files[0], "clientes");
+
+        await setDoc(doc(db, "users", currentUser.uid), {
+            role: "cliente",
+            nombre: document.getElementById('clienteNombre').value,
+            telefono: document.getElementById('telefonoCliente').value,
+            foto: fotoURL,
+            updatedAt: serverTimestamp()
+        }, { merge: true });
+
+        btn.innerText = "Guardar Perfil Cliente";
+        alert("¡Datos de cliente guardados!");
+    };
+
+    // --- GUARDAR DRIVER ---
+    document.getElementById('guardarDriver').onclick = async () => {
+        if(!currentUser) return alert("Inicia sesión primero");
+        const anio = parseInt(document.getElementById('anoVehiculo').value);
+        if(anio < 2014) return alert("El vehículo debe ser año 2014 o superior.");
+
+        const btn = document.getElementById('guardarDriver');
+        btn.innerText = "Procesando...";
+
+        const licenciaURL = await subirArchivo(document.getElementById('licenciaConducir').files[0], "drivers/docs");
+
+        await setDoc(doc(db, "users", currentUser.uid), {
+            role: "driver",
+            nombre: document.getElementById('driverNombre').value,
+            vehiculo: {
+                marca: document.getElementById('marcaVehiculo').value,
+                modelo: document.getElementById('modeloVehiculo').value,
+                anio: anio,
+                placa: document.getElementById('placaVehiculo').value
+            },
+            licencia: licenciaURL,
+            status: "pendiente_aprobacion"
+        }, { merge: true });
+
+        btn.innerText = "Registrarse como Driver";
+        alert("Registro enviado a revisión");
+    };
+
+    // --- MAPA Y GPS REAL ---
+    const map = L.map('map').setView([userCoords.lat, userCoords.lng], 15);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    let routingControl = null;
+    let destinoCoord = null;
+
+    // Obtener Ubicación Real
+    navigator.geolocation.getCurrentPosition((pos) => {
+        userCoords.lat = pos.coords.latitude;
+        userCoords.lng = pos.coords.longitude;
+        map.setView([userCoords.lat, userCoords.lng], 15);
+        L.marker([userCoords.lat, userCoords.lng]).addTo(map).bindPopup("Estás aquí").openPopup();
+        document.getElementById('puntoA').value = `Mi ubicación (${userCoords.lat.toFixed(4)})`;
+    }, (err) => {
+        console.warn("Error GPS:", err.message);
+        alert("Activa el GPS para una mejor experiencia");
+    });
+
+    // Click en mapa para destino
+    map.on('click', (e) => {
+        destinoCoord = e.latlng;
+        document.getElementById('puntoB').value = `${destinoCoord.lat.toFixed(4)}, ${destinoCoord.lng.toFixed(4)}`;
+        
+        if (routingControl) map.removeControl(routingControl);
+
+        routingControl = L.Routing.control({
+            waypoints: [
+                L.latLng(userCoords.lat, userCoords.lng),
+                L.latLng(destinoCoord.lat, destinoCoord.lng)
+            ],
+            createMarker: () => null 
+        }).addTo(map);
+
+        routingControl.on('routesfound', (e) => {
+            const dist = e.routes[0].summary.totalDistance / 1000;
+            document.getElementById('distanciaTexto').innerText = dist.toFixed(2) + " km";
+            
+            // Cálculo tarifa
+     let costo = 0;
 
 if(km <= 3){
 
@@ -852,172 +270,54 @@ costo.toFixed(2);
 
 };
 
-</script>
 
-<!-- ===================================================== -->
-<!-- TEMPORIZADOR -->
-<!-- ===================================================== -->
+    // --- ENVIAR SOLICITUD ---
+    document.getElementById('enviarSolicitud').onclick = async () => {
+        if(!currentUser) return alert("Inicia sesión");
+        if(!destinoCoord) return alert("Selecciona un destino en el mapa");
 
-<script>
+        await addDoc(collection(db, "viajes"), {
+            clienteId: currentUser.uid,
+            clienteNombre: currentUser.displayName,
+            origen: { lat: userCoords.lat, lng: userCoords.lng },
+            destino: { lat: destinoCoord.lat, lng: destinoCoord.lng },
+            oferta: document.getElementById('ofertaCliente').value,
+            estado: "buscando",
+            timestamp: serverTimestamp()
+        });
 
-let contadorBusqueda = 30;
+        iniciarTemporizador();
+        document.getElementById('estadoViaje').innerText = "Buscando Driver cercano...";
+    };
 
-function iniciarTemporizador(){
+    function iniciarTemporizador() {
+        let seg = 30;
+        const t = setInterval(() => {
+            seg--;
+            document.getElementById('temporizador').innerText = seg;
+            if(seg <= 0) {
+                clearInterval(t);
+                document.getElementById('estadoViaje').innerText = "No hay conductores disponibles ahora.";
+            }
+        }, 1000);
+    }
 
-contadorBusqueda = 30;
+    // --- CHAT SIMPLE ---
+    document.getElementById('enviarMensaje').onclick = () => {
+        const msg = document.getElementById('mensajeChat').value;
+        if(!msg) return;
+        const box = document.getElementById('chatMensajes');
+        const div = document.createElement('div');
+        div.className = 'mensaje';
+        div.innerText = `Tú: ${msg}`;
+        box.appendChild(div);
+        document.getElementById('mensajeChat').value = "";
+        box.scrollTop = box.scrollHeight;
+    };
 
-const interval = setInterval(()=>{
-
-contadorBusqueda--;
-
-document.getElementById(
-"temporizador"
-).innerHTML =
-contadorBusqueda;
-
-if(contadorBusqueda <= 0){
-
-clearInterval(interval);
-
-document.getElementById(
-"estadoViaje"
-).innerHTML =
-"No se encontraron drivers";
-
-}
-
-},1000);
-
-}
-
-</script>
-
-<!-- ===================================================== -->
-<!-- CHAT -->
-<!-- ===================================================== -->
-
-<script>
-
-enviarMensaje.onclick = ()=>{
-
-const mensaje =
-mensajeChat.value;
-
-if(mensaje === "") return;
-
-const div =
-document.createElement("div");
-
-div.className =
-"mensaje";
-
-div.innerHTML =
-"👤 " + mensaje;
-
-chatMensajes.appendChild(div);
-
-mensajeChat.value = "";
-
-chatMensajes.scrollTop =
-chatMensajes.scrollHeight;
-
-};
-
-</script>
-
-<!-- ===================================================== -->
-<!-- BOTONES -->
-<!-- ===================================================== -->
-
-<script>
-
-aceptarViaje.onclick = ()=>{
-
-estadoViaje.innerHTML =
-"Driver asignado 🚖";
-
-alert(
-"Tu driver va en camino 🚖"
-);
-
-};
-
-rechazarViaje.onclick = ()=>{
-
-estadoViaje.innerHTML =
-"Driver rechazó el viaje";
-
-};
-
-enviarContraOferta.onclick = ()=>{
-
-alert(
-"Contraoferta enviada"
-);
-
-};
-
-finalizarViaje.onclick = ()=>{
-
-estadoViaje.innerHTML =
-"Viaje Finalizado ✅";
-
-alert(
-"Cobro realizado: " +
-costoViaje.innerHTML
-);
-
-};
-
-guardarCalificacion.onclick = ()=>{
-
-alert(
-"Calificación enviada"
-);
-
-};
-
-</script>
-
-<!-- ===================================================== -->
-<!-- GPS -->
-<!-- ===================================================== -->
-
-<script>
-
-navigator.geolocation.watchPosition(
-(position)=>{
-
-console.log(
-position.coords.latitude,
-position.coords.longitude
-);
-
-});
-
-</script>
-
-<!-- ===================================================== -->
-<!-- TELEFONOS -->
-<!-- ===================================================== -->
-
-<script>
-
-window.intlTelInput(
-document.querySelector("#telefonoCliente"),
-{
-initialCountry:"auto",
-separateDialCode:true
-}
-);
-
-window.intlTelInput(
-document.querySelector("#telefonoDriver"),
-{
-initialCountry:"auto",
-separateDialCode:true
-}
-);
+    // --- INICIALIZAR TELÉFONOS ---
+    window.intlTelInput(document.querySelector("#telefonoCliente"), { initialCountry: "sv", separateDialCode: true });
+    window.intlTelInput(document.querySelector("#telefonoDriver"), { initialCountry: "sv", separateDialCode: true });
 
 </script>
 
