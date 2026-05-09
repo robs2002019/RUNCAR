@@ -3,103 +3,105 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RUN CAR - Oficial</title>
+    <title>RUN CAR - Sistema de Gestión</title>
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css"/>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@23.0.11/build/css/intlTelInput.css"/>
 
     <style>
-        *{ margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        *{ margin:0; padding:0; box-sizing:border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body{ background:#0f172a; color:white; }
-        header{ background:#111827; padding:20px; text-align:center; font-size:28px; font-weight:bold; border-bottom: 2px solid #0ea5e9; }
-        .container{ padding:15px; max-width: 800px; margin: auto; }
-        .card{ background:#1e293b; padding:20px; border-radius:15px; margin-bottom:20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
-        h2{ margin-bottom:15px; color:#38bdf8; font-size: 1.2rem; }
-        input, select, textarea{ width:100%; padding:12px; margin-top:10px; border:1px solid #334155; border-radius:10px; background:#334155; color:white; }
-        label{ display: block; margin-top: 15px; font-size: 0.9rem; color: #94a3b8; }
-        button{ width:100%; padding:14px; margin-top:12px; border:none; border-radius:10px; background:#0ea5e9; color:white; font-size:16px; font-weight: bold; cursor:pointer; transition: 0.3s; }
+        header{ background:#111827; padding:20px; text-align:center; font-size:24px; font-weight:bold; color: #38bdf8; border-bottom: 3px solid #0ea5e9; }
+        .container{ padding:15px; max-width: 900px; margin: auto; }
+        .card{ background:#1e293b; padding:20px; border-radius:15px; margin-bottom:20px; border: 1px solid #334155; }
+        h2{ margin-bottom:15px; color:#38bdf8; font-size: 1.1rem; border-left: 4px solid #0ea5e9; padding-left: 10px; }
+        input, select, textarea{ width:100%; padding:12px; margin-top:10px; border:none; border-radius:8px; background:#334155; color:white; }
+        button{ width:100%; padding:14px; margin-top:12px; border:none; border-radius:8px; background:#0ea5e9; color:white; font-size:15px; font-weight: bold; cursor:pointer; }
         button:hover{ background:#0284c7; }
-        #map{ width:100%; height:400px; border-radius:15px; margin-top:15px; z-index: 1; }
-        .info-box{ margin-top:15px; background:#111827; padding:15px; border-radius:12px; font-size:18px; text-align: center; border-left: 4px solid #0ea5e9; }
-        .chat-box{ height:200px; overflow-y:auto; background:#0f172a; padding:10px; border-radius:10px; margin-top:10px; border: 1px solid #334155; }
-        .mensaje{ background:#334155; padding:8px 12px; border-radius:10px; margin-bottom:8px; font-size: 0.9rem; }
-        .admin-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-        .estado { padding:10px; border-radius:10px; text-align:center; margin-top:5px; font-weight:bold; }
-        .online { background: #16a34a; }
-        .offline { background: #dc2626; }
+        .btn-reject { background: #ef4444; }
+        .btn-offer { background: #f59e0b; }
+        #map{ width:100%; height:400px; border-radius:12px; margin-top:15px; }
+        
+        /* Chat UI */
+        .chat-container { height:250px; overflow-y:auto; background:#0f172a; padding:10px; border-radius:10px; margin-bottom: 10px; display: flex; flex-direction: column; }
+        .msg { padding: 8px 12px; border-radius: 15px; margin-bottom: 5px; max-width: 80% }
+        .msg.sent { background: #0ea5e9; align-self: flex-end; }
+        .msg.received { background: #334155; align-self: flex-start; }
+
+        /* Financiero */
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+        .stat-item { background: #111827; padding: 15px; border-radius: 10px; text-align: center; }
+        .stat-val { display: block; font-size: 1.5rem; font-weight: bold; color: #22c55e; }
+        .comision { color: #f87171 !important; }
+
+        .iti { width: 100%; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-<header>RUN CAR</header>
+<header>RUN CAR - PASAJEROS Y CARGA</header>
 
 <div class="container">
 
-    <div class="card" id="loginSection">
-        <h2>Registro / Login</h2>
-        <button id="googleLoginBtn">Continuar con Google</button>
-        <p id="userEmail" style="text-align:center; margin-top:10px; color:#38bdf8;"></p>
+    <div class="card">
+        <button id="googleLoginBtn">🔑 Iniciar Sesión con Google</button>
     </div>
 
     <div class="card">
-        <h2>Perfil Cliente</h2>
-        <input type="text" id="clienteNombre" placeholder="Nombre completo">
-        <input type="text" id="clientePais" placeholder="País">
-        <input type="text" id="clienteCiudad" placeholder="Ciudad">
-        <div style="margin-top:10px;">
-            <input type="tel" id="telefonoCliente">
-        </div>
-        <label>Foto de perfil</label>
-        <input type="file" id="clienteFoto" accept="image/*">
-        <button id="guardarCliente">Guardar Perfil Cliente</button>
-    </div>
-
-    <div class="card">
-        <h2>Perfil Conductor (Driver)</h2>
-        <input type="text" id="driverNombre" placeholder="Nombre completo">
-        <div style="margin-top:10px;">
-            <input type="tel" id="telefonoDriver">
-        </div>
-        <input type="text" id="marcaVehiculo" placeholder="Marca (Ej: Toyota)">
-        <input type="text" id="modeloVehiculo" placeholder="Modelo (Ej: Corolla)">
-        <input type="number" id="anoVehiculo" placeholder="Año (Mínimo 2014)">
-        <input type="text" id="placaVehiculo" placeholder="Número de placa">
-        
-        <label>Documentación (Fotos/PDF)</label>
-        <input type="file" id="fotoRostro" accept="image/*">
-        <label>Licencia de Conducir</label>
-        <input type="file" id="licenciaConducir">
-        <button id="guardarDriver">Registrarse como Driver</button>
-    </div>
-
-    <div class="card">
-        <h2>Solicitar Viaje</h2>
-        <input type="text" id="puntoA" placeholder="Origen (GPS actual...)" readonly>
-        <input type="text" id="puntoB" placeholder="Destino (Click en el mapa)">
-        
+        <h2>📍 Solicitar Viaje</h2>
+        <input type="text" id="puntoA" placeholder="Origen">
+        <input type="text" id="puntoB" placeholder="Destino">
         <div id="map"></div>
-
-        <div class="info-box">
-            Distancia: <span id="distanciaTexto">0 km</span><br>
-            Sugerencia: <span id="costoViaje">$0.00</span>
+        <div class="stats-grid">
+            <div class="stat-item">Distancia: <span id="distanciaTexto">0 km</span></div>
+            <div class="stat-item">Precio App: <span id="costoViaje">$0.00</span></div>
         </div>
-
         <input type="number" id="ofertaCliente" placeholder="Tu oferta ($)">
-        <button id="calcularRutaBtn">Calcular Ruta</button>
-        <button id="enviarSolicitud" style="background:#16a34a;">Pedir RUN CAR</button>
+        <button id="enviarSolicitud">🚀 Enviar Solicitud</button>
+    </div>
+
+    <div id="panelConductor" class="card" style="display:none;">
+        <h2>🚖 Solicitud Recibida</h2>
+        <p id="detalleViaje">Esperando viajes...</p>
+        <div class="stats-grid">
+            <button id="btnAceptar">Aceptar</button>
+            <button id="btnRechazar" class="btn-reject">Rechazar</button>
+        </div>
+        <input type="number" id="contraOfertaDriver" placeholder="Monto Contraoferta ($)">
+        <button id="btnContraoferta" class="btn-offer">Enviar Contraoferta</button>
     </div>
 
     <div class="card">
-        <h2>Estado del Viaje</h2>
-        <div id="estadoViaje" class="info-box">Esperando solicitud...</div>
-        <div id="temporizador" style="font-size:20px; text-align:center; margin:10px;">30</div>
-        
-        <div class="chat-box" id="chatMensajes"></div>
-        <div style="display:flex; gap:5px;">
-            <input type="text" id="mensajeChat" placeholder="Mensaje...">
-            <button id="enviarMensaje" style="width:100px;">Enviar</button>
+        <h2>💬 Chat con el Conductor/Cliente</h2>
+        <div id="chatMensajes" class="chat-container">
+            <div class="msg received">Sistema: Inicia el chat una vez aceptado el viaje.</div>
         </div>
+        <div style="display: flex; gap: 5px;">
+            <input type="text" id="mensajeChat" placeholder="Escribe un mensaje...">
+            <button id="enviarMensaje" style="width: 80px; margin-top: 10px;">Send</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>💰 Mis Ganancias (Hoy)</h2>
+        <div class="stats-grid">
+            <div class="stat-item">Total Bruto <span id="gananciaBruta" class="stat-val">$0.00</span></div>
+            <div class="stat-item">Comisión (8%) <span id="comisionPagar" class="stat-val comision">$0.00</span></div>
+        </div>
+    </div>
+
+    <div class="card" style="border: 1px solid #ef4444;">
+        <h2 style="color: #f87171;">🛡️ Panel Administrador</h2>
+        <div id="listaViajesAdmin">
+            <p style="font-size: 0.9rem;">Cargando historial global de comisiones...</p>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>📱 Datos de Contacto</h2>
+        <input type="tel" id="telefono">
+        <button onclick="alert('Teléfono guardado')">Guardar Contacto</button>
     </div>
 
 </div>
@@ -109,11 +111,8 @@
 <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@23.0.11/build/js/intlTelInput.min.js"></script>
 
 <script type="module">
-    // CONFIGURACIÓN FIREBASE (Mantén la tuya)
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-    import { getFirestore, doc, setDoc, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-    import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+    import { getFirestore, collection, addDoc, onSnapshot, query, where, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyAyRrBUmw4OEzS7EmvK_XmDk6Z5rrjLC3A",
@@ -125,200 +124,145 @@
     };
 
     const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
     const db = getFirestore(app);
-    const storage = getStorage(app);
-    const provider = new GoogleAuthProvider();
 
-    let currentUser = null;
-    let userCoords = { lat: 13.6929, lng: -89.2182 }; // Default
+    // --- LÓGICA DE CHAT EN TIEMPO REAL ---
+    const chatBox = document.getElementById('chatMensajes');
+    const msgInput = document.getElementById('mensajeChat');
 
-    // --- AUTENTICACIÓN ---
-    document.getElementById('googleLoginBtn').onclick = async () => {
-        try {
-            const result = await signInWithPopup(auth, provider);
-            currentUser = result.user;
-            document.getElementById('userEmail').innerText = "Conectado como: " + currentUser.email;
-            alert("Bienvenido " + currentUser.displayName);
-        } catch (error) {
-            console.error(error);
-            alert("Error al iniciar sesión");
-        }
+    document.getElementById('enviarMensaje').onclick = async () => {
+        if(!msgInput.value) return;
+        await addDoc(collection(db, "chats"), {
+            texto: msgInput.value,
+            timestamp: serverTimestamp(),
+            user: "Cliente" // Aquí usarías el auth
+        });
+        msgInput.value = "";
     };
 
-    // --- SUBIR ARCHIVOS ---
-    async function subirArchivo(file, folder) {
-        if(!file) return "";
-        const storageRef = ref(storage, `${folder}/${currentUser.uid}_${Date.now()}`);
-        await uploadBytes(storageRef, file);
-        return await getDownloadURL(storageRef);
-    }
-
-    // --- GUARDAR CLIENTE ---
-    document.getElementById('guardarCliente').onclick = async () => {
-        if(!currentUser) return alert("Inicia sesión primero");
-        const btn = document.getElementById('guardarCliente');
-        btn.innerText = "Guardando...";
-        
-        const fotoURL = await subirArchivo(document.getElementById('clienteFoto').files[0], "clientes");
-
-        await setDoc(doc(db, "users", currentUser.uid), {
-            role: "cliente",
-            nombre: document.getElementById('clienteNombre').value,
-            telefono: document.getElementById('telefonoCliente').value,
-            foto: fotoURL,
-            updatedAt: serverTimestamp()
-        }, { merge: true });
-
-        btn.innerText = "Guardar Perfil Cliente";
-        alert("¡Datos de cliente guardados!");
-    };
-
-    // --- GUARDAR DRIVER ---
-    document.getElementById('guardarDriver').onclick = async () => {
-        if(!currentUser) return alert("Inicia sesión primero");
-        const anio = parseInt(document.getElementById('anoVehiculo').value);
-        if(anio < 2014) return alert("El vehículo debe ser año 2014 o superior.");
-
-        const btn = document.getElementById('guardarDriver');
-        btn.innerText = "Procesando...";
-
-        const licenciaURL = await subirArchivo(document.getElementById('licenciaConducir').files[0], "drivers/docs");
-
-        await setDoc(doc(db, "users", currentUser.uid), {
-            role: "driver",
-            nombre: document.getElementById('driverNombre').value,
-            vehiculo: {
-                marca: document.getElementById('marcaVehiculo').value,
-                modelo: document.getElementById('modeloVehiculo').value,
-                anio: anio,
-                placa: document.getElementById('placaVehiculo').value
-            },
-            licencia: licenciaURL,
-            status: "pendiente_aprobacion"
-        }, { merge: true });
-
-        btn.innerText = "Registrarse como Driver";
-        alert("Registro enviado a revisión");
-    };
-
-    // --- MAPA Y GPS REAL ---
-    const map = L.map('map').setView([userCoords.lat, userCoords.lng], 15);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
-    let routingControl = null;
-    let destinoCoord = null;
-
-    // Obtener Ubicación Real
-    navigator.geolocation.getCurrentPosition((pos) => {
-        userCoords.lat = pos.coords.latitude;
-        userCoords.lng = pos.coords.longitude;
-        map.setView([userCoords.lat, userCoords.lng], 15);
-        L.marker([userCoords.lat, userCoords.lng]).addTo(map).bindPopup("Estás aquí").openPopup();
-        document.getElementById('puntoA').value = `Mi ubicación (${userCoords.lat.toFixed(4)})`;
-    }, (err) => {
-        console.warn("Error GPS:", err.message);
-        alert("Activa el GPS para una mejor experiencia");
+    onSnapshot(query(collection(db, "chats"), orderBy("timestamp", "asc")), (snapshot) => {
+        chatBox.innerHTML = "";
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            const div = document.createElement('div');
+            div.className = data.user === "Cliente" ? "msg sent" : "msg received";
+            div.textContent = data.texto;
+            chatBox.appendChild(div);
+        });
+        chatBox.scrollTop = chatBox.scrollHeight;
     });
 
-    // Click en mapa para destino
-    map.on('click', (e) => {
-        destinoCoord = e.latlng;
-        document.getElementById('puntoB').value = `${destinoCoord.lat.toFixed(4)}, ${destinoCoord.lng.toFixed(4)}`;
+    // --- LÓGICA DE COMISIONES (8%) ---
+    function actualizarFinanzas(viajes) {
+        let totalBruto = 0;
+        viajes.forEach(v => totalBruto += parseFloat(v.monto));
         
+        const comision = totalBruto * 0.08;
+        
+        document.getElementById('gananciaBruta').textContent = `$${totalBruto.toFixed(2)}`;
+        document.getElementById('comisionPagar').textContent = `$${comision.toFixed(2)}`;
+    }
+
+    // --- PANEL ADMIN ---
+    const adminPanel = document.getElementById('listaViajesAdmin');
+    onSnapshot(collection(db, "viajes"), (snapshot) => {
+        adminPanel.innerHTML = "";
+        let viajesArray = [];
+        snapshot.forEach(doc => {
+            const v = doc.data();
+            viajesArray.push(v);
+            const p = document.createElement('div');
+            p.style.padding = "5px";
+            p.style.borderBottom = "1px solid #334155";
+            p.innerHTML = `Driver: ${v.driverId || 'Pendiente'} - Monto: $${v.monto} - <b>Comisión: $${(v.monto * 0.08).toFixed(2)}</b>`;
+            adminPanel.appendChild(p);
+        });
+        actualizarFinanzas(viajesArray);
+    });
+
+</script>
+
+<script>
+    // --- MAPA Y RUTAS ---
+    const map = L.map('map').setView([13.69, -89.21], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    let markerA, markerB, routingControl;
+
+    // Geolocalización Inicial
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(pos => {
+            const { latitude, longitude } = pos.coords;
+            map.setView([latitude, longitude], 15);
+            markerA = L.marker([latitude, longitude], {draggable: true}).addTo(map);
+            actualizarCoordenadas();
+
+            markerA.on('dragend', () => {
+                actualizarCoordenadas();
+                trazarRuta();
+            });
+        });
+    }
+
+    map.on('click', (e) => {
+        if (!markerB) {
+            markerB = L.marker(e.latlng, {draggable: true}).addTo(map);
+            markerB.on('dragend', trazarRuta);
+        } else {
+            markerB.setLatLng(e.latlng);
+        }
+        actualizarCoordenadas();
+        trazarRuta();
+    });
+
+    function actualizarCoordenadas() {
+        if(markerA) document.getElementById('puntoA').value = `${markerA.getLatLng().lat.toFixed(5)}, ${markerA.getLatLng().lng.toFixed(5)}`;
+        if(markerB) document.getElementById('puntoB').value = `${markerB.getLatLng().lat.toFixed(5)}, ${markerB.getLatLng().lng.toFixed(5)}`;
+    }
+
+    function trazarRuta() {
+        if (!markerA || !markerB) return;
         if (routingControl) map.removeControl(routingControl);
 
         routingControl = L.Routing.control({
-            waypoints: [
-                L.latLng(userCoords.lat, userCoords.lng),
-                L.latLng(destinoCoord.lat, destinoCoord.lng)
-            ],
-            createMarker: () => null 
+            waypoints: [markerA.getLatLng(), markerB.getLatLng()],
+            createMarker: () => null
         }).addTo(map);
 
         routingControl.on('routesfound', (e) => {
             const dist = e.routes[0].summary.totalDistance / 1000;
             document.getElementById('distanciaTexto').innerText = dist.toFixed(2) + " km";
-            
-            // Cálculo tarifa
-     let costo = 0;
-
-if(km <= 3){
-
-costo = km * 1;
-
-}else{
-
-const extra = km - 3;
-
-costo = 3 + (extra * 0.30);
-
-}
-
-document.getElementById(
-"costoViaje"
-).innerHTML =
-"$" + costo.toFixed(2);
-
-document.getElementById(
-"ofertaApp"
-).value =
-costo.toFixed(2);
-
-}
-);
-
-};
-
-
-    // --- ENVIAR SOLICITUD ---
-    document.getElementById('enviarSolicitud').onclick = async () => {
-        if(!currentUser) return alert("Inicia sesión");
-        if(!destinoCoord) return alert("Selecciona un destino en el mapa");
-
-        await addDoc(collection(db, "viajes"), {
-            clienteId: currentUser.uid,
-            clienteNombre: currentUser.displayName,
-            origen: { lat: userCoords.lat, lng: userCoords.lng },
-            destino: { lat: destinoCoord.lat, lng: destinoCoord.lng },
-            oferta: document.getElementById('ofertaCliente').value,
-            estado: "buscando",
-            timestamp: serverTimestamp()
+            let costo = dist <= 3 ? 3.00 : 3.00 + ((dist - 3) * 0.50);
+            document.getElementById('costoViaje').innerText = "$" + costo.toFixed(2);
         });
-
-        iniciarTemporizador();
-        document.getElementById('estadoViaje').innerText = "Buscando Driver cercano...";
-    };
-
-    function iniciarTemporizador() {
-        let seg = 30;
-        const t = setInterval(() => {
-            seg--;
-            document.getElementById('temporizador').innerText = seg;
-            if(seg <= 0) {
-                clearInterval(t);
-                document.getElementById('estadoViaje').innerText = "No hay conductores disponibles ahora.";
-            }
-        }, 1000);
     }
 
-    // --- CHAT SIMPLE ---
-    document.getElementById('enviarMensaje').onclick = () => {
-        const msg = document.getElementById('mensajeChat').value;
-        if(!msg) return;
-        const box = document.getElementById('chatMensajes');
-        const div = document.createElement('div');
-        div.className = 'mensaje';
-        div.innerText = `Tú: ${msg}`;
-        box.appendChild(div);
-        document.getElementById('mensajeChat').value = "";
-        box.scrollTop = box.scrollHeight;
+    // --- TELÉFONO INTERNACIONAL ---
+    const inputTel = document.querySelector("#telefono");
+    const iti = window.intlTelInput(inputTel, {
+        initialCountry: "auto",
+        geoIpLookup: callback => {
+            fetch("https://ipapi.co/json")
+                .then(res => res.json())
+                .then(data => callback(data.country_code))
+                .catch(() => callback("sv"));
+        },
+        utilsScript: "https://cdn.jsdelivr.net/npm/intl-tel-input@23.0.11/build/js/utils.js",
+        separateDialCode: true
+    });
+
+    // --- SIMULACIÓN BOTONES CONDUCTOR ---
+    document.getElementById('enviarSolicitud').onclick = () => {
+        document.getElementById('panelConductor').style.display = 'block';
+        document.getElementById('detalleViaje').innerHTML = `Nuevo viaje: Origen -> Destino. Oferta cliente: <b>$${document.getElementById('ofertaCliente').value}</b>`;
+        alert("Solicitud enviada a conductores cercanos");
     };
 
-    // --- INICIALIZAR TELÉFONOS ---
-    window.intlTelInput(document.querySelector("#telefonoCliente"), { initialCountry: "sv", separateDialCode: true });
-    window.intlTelInput(document.querySelector("#telefonoDriver"), { initialCountry: "sv", separateDialCode: true });
-
+    document.getElementById('btnAceptar').onclick = () => alert("Viaje aceptado. Dirígete al punto de origen.");
+    document.getElementById('btnContraoferta').onclick = () => {
+        const monto = document.getElementById('contraOfertaDriver').value;
+        alert("Enviando contraoferta de $" + monto + " al cliente...");
+    };
 </script>
 
 </body>
