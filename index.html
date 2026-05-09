@@ -1,307 +1,302 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RUN CAR - Gestión Profesional</title>
 
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css"/>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@23.0.11/build/css/intlTelInput.css"/>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <style>
-        :root { --primary: #0ea5e9; --bg: #0f172a; --card: #1e293b; }
-        *{ margin:0; padding:0; box-sizing:border-box; font-family: 'Segoe UI', sans-serif; }
-        body{ background: var(--bg); color:white; }
-        header{ background:#111827; padding:15px; text-align:center; color: var(--primary); font-weight:bold; border-bottom: 2px solid var(--primary); }
-        .container{ padding:15px; max-width: 800px; margin: auto; }
-        .card{ background: var(--card); padding:20px; border-radius:15px; margin-bottom:20px; border: 1px solid #334155; }
-        .hidden { display: none !important; }
-        
-        h2{ margin-bottom:15px; color: var(--primary); font-size: 1rem; text-transform: uppercase; letter-spacing: 1px; }
-        input, select, textarea { width:100%; padding:12px; margin-top:10px; border:none; border-radius:8px; background:#334155; color:white; }
-        button{ width:100%; padding:14px; margin-top:12px; border:none; border-radius:8px; background: var(--primary); color:white; font-weight: bold; cursor:pointer; }
-        
-        #map{ width:100%; height:350px; border-radius:12px; margin-top:10px; }
-        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
-        .stat-box { background: #111827; padding: 10px; border-radius: 8px; text-align: center; border: 1px solid #334155; }
-        
-        /* Chat UI */
-        .chat-area { height:200px; overflow-y:auto; background:#0f172a; border-radius:10px; padding:10px; margin-top:10px; display: flex; flex-direction: column; }
-        .msg { padding: 8px 12px; border-radius: 12px; margin-bottom: 5px; max-width: 80%; font-size: 0.9rem; }
-        .msg.sent { background: var(--primary); align-self: flex-end; }
-        .msg.received { background: #334155; align-self: flex-start; }
+<title>RUN CAR PRO GLOBAL</title>
 
-        .role-selector { display: flex; gap: 10px; margin-bottom: 15px; }
-        .role-btn { flex: 1; background: #334155; padding: 10px; border-radius: 8px; text-align: center; cursor: pointer; }
-        .role-btn.active { background: var(--primary); }
-    </style>
+<link rel="stylesheet"
+href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+<link rel="stylesheet"
+href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css"/>
+
+<link rel="stylesheet"
+href="https://cdn.jsdelivr.net/npm/intl-tel-input@23.0.11/build/css/intlTelInput.css"/>
+
+<style>
+
+:root{
+--primary:#0ea5e9;
+--bg:#0f172a;
+--card:#1e293b;
+}
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:Segoe UI,sans-serif;
+}
+
+body{
+background:var(--bg);
+color:white;
+}
+
+header{
+background:#111827;
+padding:15px;
+text-align:center;
+font-size:1.3rem;
+font-weight:bold;
+color:var(--primary);
+border-bottom:2px solid var(--primary);
+}
+
+.container{
+padding:15px;
+max-width:900px;
+margin:auto;
+}
+
+.card{
+background:var(--card);
+padding:20px;
+border-radius:15px;
+margin-bottom:20px;
+border:1px solid #334155;
+}
+
+.hidden{
+display:none!important;
+}
+
+h2{
+margin-bottom:15px;
+color:var(--primary);
+font-size:1rem;
+text-transform:uppercase;
+letter-spacing:1px;
+}
+
+input,
+textarea,
+select{
+width:100%;
+padding:12px;
+margin-top:10px;
+border:none;
+border-radius:10px;
+background:#334155;
+color:white;
+}
+
+button{
+width:100%;
+padding:14px;
+margin-top:12px;
+border:none;
+border-radius:10px;
+background:var(--primary);
+color:white;
+font-weight:bold;
+cursor:pointer;
+}
+
+button:hover{
+opacity:.9;
+}
+
+#map{
+width:100%;
+height:350px;
+border-radius:12px;
+margin-top:10px;
+}
+
+.stats-grid{
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:10px;
+margin-top:15px;
+}
+
+.stat-box{
+background:#111827;
+padding:10px;
+border-radius:10px;
+text-align:center;
+border:1px solid #334155;
+}
+
+.role-selector{
+display:flex;
+gap:10px;
+margin-bottom:15px;
+}
+
+.role-btn{
+flex:1;
+padding:12px;
+border-radius:10px;
+background:#334155;
+text-align:center;
+cursor:pointer;
+}
+
+.role-btn.active{
+background:var(--primary);
+}
+
+.chat-area{
+height:220px;
+overflow-y:auto;
+background:#0f172a;
+padding:10px;
+border-radius:10px;
+display:flex;
+flex-direction:column;
+}
+
+.msg{
+padding:8px 12px;
+border-radius:12px;
+margin-bottom:5px;
+max-width:80%;
+font-size:.9rem;
+}
+
+.msg.sent{
+background:var(--primary);
+align-self:flex-end;
+}
+
+.msg.received{
+background:#334155;
+align-self:flex-start;
+}
+
+.trip-card{
+background:#111827;
+padding:10px;
+border-radius:10px;
+margin-bottom:10px;
+border:1px solid #334155;
+}
+
+.small{
+font-size:.8rem;
+color:#94a3b8;
+margin-top:5px;
+}
+
+</style>
+
 </head>
 <body>
 
-<header>RUN CAR PRO</header>
+<header>
+RUN CAR PRO GLOBAL
+</header>
 
 <div class="container">
 
-    <div id="sectionAuth" class="card">
-        <h2>Bienvenido</h2>
-        <p style="text-align: center; color: #94a3b8; margin-bottom: 20px;">Inicia sesión para continuar</p>
-        <button id="btnGoogleLogin" style="background: #ffffff; color: #000;">
-            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18" style="vertical-align:middle; margin-right:8px;">
-            Continuar con Google
-        </button>
-    </div>
+<!-- LOGIN -->
 
-    <div id="sectionProfile" class="card hidden">
-        <h2>Completa tu Perfil</h2>
-        <div class="role-selector">
-            <div id="selectCliente" class="role-btn active">Soy Cliente</div>
-            <div id="selectDriver" class="role-btn">Soy Conductor</div>
-        </div>
-        
-        <input type="text" id="regNombre" placeholder="Nombre completo">
-        <input type="tel" id="regTel">
-        
-        <div id="fieldsDriver" class="hidden">
-            <input type="text" id="vehiculoMarca" placeholder="Marca y Modelo del Vehículo">
-            <input type="text" id="vehiculoPlaca" placeholder="Número de Placa">
-            <label style="display:block; margin-top:10px; font-size:0.8rem;">Foto de Licencia / Documentos:</label>
-            <input type="file" id="driverDocs" accept="image/*">
-        </div>
-        
-        <button id="btnSaveProfile">Finalizar Registro</button>
-    </div>
+<div id="sectionAuth" class="card">
 
-    <div id="sectionMain" class="hidden">
-        
-        <div id="panelCliente" class="card">
-            <h2>📍 Solicitar Nuevo Viaje</h2>
-            <input type="text" id="inputA" placeholder="Origen" readonly>
-            <input type="text" id="inputB" placeholder="Destino (Toca el mapa)" readonly>
-            <div id="map"></div>
-            <div class="stats-grid">
-                <div class="stat-box">Distancia: <span id="txtDist">0 km</span></div>
-                <div class="stat-box">Precio App: <span id="txtPrecio">$0.00</span></div>
-            </div>
-            <input type="number" id="ofertaUser" placeholder="Tu oferta ($)">
-            <button id="btnRequest">🚀 Solicitar Ahora</button>
-        </div>
+<h2>Bienvenido</h2>
 
-        <div id="panelDriverRecibir" class="card hidden">
-            <h2 style="color: #22c55e;">🚖 Viajes Disponibles</h2>
-            <div id="feedViajes">Esperando solicitudes...</div>
-        </div>
+<p class="small">
+Inicia sesión para continuar
+</p>
 
-        <div class="card">
-            <h2>💬 Comunicación Directa</h2>
-            <div id="chatBox" class="chat-area"></div>
-            <div style="display:flex; gap:5px; margin-top:10px;">
-                <input type="text" id="msgText" placeholder="Escribir...">
-                <button id="btnSendMsg" style="width:70px; margin:0;">Ir</button>
-            </div>
-        </div>
+<button id="btnGoogleLogin"
+style="background:white;color:black;">
 
-        <div class="card">
-            <h2>💰 Balance de Comisiones (8%)</h2>
-            <div class="stats-grid">
-                <div class="stat-box">Bruto: <span id="finBruto">$0.00</span></div>
-                <div class="stat-box" style="color: #f87171;">Deuda: <span id="finDeuda">$0.00</span></div>
-            </div>
-        </div>
+<img
+src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+width="18"
+style="vertical-align:middle;margin-right:8px;">
 
-        <div id="panelAdmin" class="card hidden" style="border: 2px solid #ef4444;">
-            <h2 style="color: #ef4444;">🛡️ Administración Global</h2>
-            <div id="adminData">Listado de conductores y comisiones pendientes...</div>
-        </div>
+Continuar con Google
 
-    </div>
+</button>
+
 </div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/intl-tel-input@23.0.11/build/js/intlTelInput.min.js"></script>
+<!-- PERFIL -->
 
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-    import { getFirestore, doc, getDoc, setDoc, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+<div id="sectionProfile"
+class="card hidden">
 
-    // Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+<h2>Completa tu Perfil</h2>
 
-// Your web app's Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyAyRrBUmw4OEzS7EmvK_XmDk6Z5rrjLC3A",
-  authDomain: "runcar-6eda0.firebaseapp.com",
-  databaseURL: "https://runcar-6eda0-default-rtdb.firebaseio.com",
-  projectId: "runcar-6eda0",
-  storageBucket: "runcar-6eda0.firebasestorage.app",
-  messagingSenderId: "152627344672",
-  appId: "1:152627344672:web:b420d1c8cbb670069b9345"
-};
+<div class="role-selector">
 
-    // Initialize Firebase
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-    const provider = new GoogleAuthProvider();
+<div id="selectCliente"
+class="role-btn active">
+Soy Cliente
+</div>
 
-    let userRole = "cliente";
+<div id="selectDriver"
+class="role-btn">
+Soy Conductor
+</div>
 
-    // --- Lógica de Autenticación ---
-    document.getElementById('btnGoogleLogin').onclick = () => signInWithPopup(auth, provider);
+</div>
 
-    onAuthStateChanged(auth, async (user) => {
-        if (user) {
-            document.getElementById('sectionAuth').classList.add('hidden');
-            
-            // Verificar si el usuario ya existe en Firestore
-            const userDoc = await getDoc(doc(db, "users", user.uid));
-            
-            if (userDoc.exists()) {
-                startApp(userDoc.data(), user.email);
-            } else {
-                document.getElementById('sectionProfile').classList.remove('hidden');
-            }
-        }
-    });
+<input type="text"
+id="regNombre"
+placeholder="Nombre completo">
 
-    // --- Lógica de Registro de Perfil ---
-    document.getElementById('selectCliente').onclick = () => {
-        userRole = "cliente";
-        document.getElementById('selectCliente').classList.add('active');
-        document.getElementById('selectDriver').classList.remove('active');
-        document.getElementById('fieldsDriver').classList.add('hidden');
-    };
+<input type="tel"
+id="regTel">
 
-    document.getElementById('selectDriver').onclick = () => {
-        userRole = "driver";
-        document.getElementById('selectDriver').classList.add('active');
-        document.getElementById('selectCliente').classList.remove('active');
-        document.getElementById('fieldsDriver').classList.remove('hidden');
-    };
+<div id="fieldsDriver"
+class="hidden">
 
-    document.getElementById('btnSaveProfile').onclick = async () => {
-        const user = auth.currentUser;
-        const data = {
-            uid: user.uid,
-            nombre: document.getElementById('regNombre').value,
-            telefono: iti.getNumber(),
-            role: userRole,
-            email: user.email
-        };
-        
-        await setDoc(doc(db, "users", user.uid), data);
-        document.getElementById('sectionProfile').classList.add('hidden');
-        startApp(data, user.email);
-    };
+<input type="text"
+id="vehiculoMarca"
+placeholder="Marca y modelo">
 
-    function startApp(userData, email) {
-        document.getElementById('sectionMain').classList.remove('hidden');
-        
-        // RESTRICCIÓN ADMIN: Solo Robs
-        if (email === "robs2002004@gmail.com") {
-            document.getElementById('panelAdmin').classList.remove('hidden');
-        }
+<input type="text"
+id="vehiculoPlaca"
+placeholder="Número de placa">
 
-        if (userData.role === "driver") {
-            document.getElementById('panelCliente').classList.add('hidden');
-            document.getElementById('panelDriverRecibir').classList.remove('hidden');
-        }
-        
-        initMap();
-    }
+<label class="small">
+Licencia / Documentos
+</label>
 
-    // --- Lógica de Chat ---
-    document.getElementById('btnSendMsg').onclick = async () => {
-        const text = document.getElementById('msgText').value;
-        if(!text) return;
-        await addDoc(collection(db, "messages"), {
-            text: text,
-            sender: auth.currentUser.uid,
-            time: serverTimestamp()
-        });
-        document.getElementById('msgText').value = "";
-    };
+<input type="file"
+id="driverDocs"
+accept="image/*">
 
-    onSnapshot(query(collection(db, "messages"), orderBy("time", "asc")), (snap) => {
-        const box = document.getElementById('chatBox');
-        box.innerHTML = "";
-        snap.forEach(d => {
-            const m = d.data();
-            const div = document.createElement('div');
-            div.className = m.sender === auth.currentUser.uid ? "msg sent" : "msg received";
-            div.textContent = m.text;
-            box.appendChild(div);
-        });
-        box.scrollTop = box.scrollHeight;
-    });
+</div>
 
-</script>
+<button id="btnSaveProfile">
+Finalizar Registro
+</button>
 
-<script>
-    // --- Mapa e intl-tel-input (Lógica visual) ---
-    const inputTel = document.querySelector("#regTel");
-    const iti = window.intlTelInput(inputTel, {
-        initialCountry: "auto",
-        geoIpLookup: callback => {
-            fetch("https://ipapi.co/json").then(res => res.json()).then(data => callback(data.country_code)).catch(() => callback("sv"));
-        },
-        utilsScript: "https://cdn.jsdelivr.net/npm/intl-tel-input@23.0.11/build/js/utils.js",
-        separateDialCode: true
-    });
+</div>
 
-    let map, markerA, markerB, routing;
+<!-- APP -->
 
-    function initMap() {
-        if(map) return;
-        map = L.map('map').setView([13.69, -89.21], 13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+<div id="sectionMain"
+class="hidden">
 
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(p => {
-                const latlng = [p.coords.latitude, p.coords.longitude];
-                map.setView(latlng, 15);
-                markerA = L.marker(latlng, {draggable: true}).addTo(map);
-                updateInputs();
-                markerA.on('dragend', () => { updateInputs(); calcRoute(); });
-            });
-        }
+<!-- CLIENTE -->
 
-        map.on('click', (e) => {
-            if(!markerB) {
-                markerB = L.marker(e.latlng, {draggable: true}).addTo(map);
-                markerB.on('dragend', calcRoute);
-            } else {
-                markerB.setLatLng(e.latlng);
-            }
-            updateInputs();
-            calcRoute();
-        });
-    }
+<div id="panelCliente"
+class="card">
 
-    function updateInputs() {
-        if(markerA) document.getElementById('inputA').value = markerA.getLatLng().lat.toFixed(5) + "," + markerA.getLatLng().lng.toFixed(5);
-        if(markerB) document.getElementById('inputB').value = markerB.getLatLng().lat.toFixed(5) + "," + markerB.getLatLng().lng.toFixed(5);
-    }
+<h2>
+📍 Solicitar Viaje
+</h2>
 
-    function calcRoute() {
-        if(!markerA || !markerB) return;
-        if(routing) map.removeControl(routing);
-        routing = L.Routing.control({
-            waypoints: [markerA.getLatLng(), markerB.getLatLng()],
-            createMarker: () => null
-        }).addTo(map);
-        routing.on('routesfound', (e) => {
-            const d = e.routes[0].summary.totalDistance / 1000;
-            document.getElementById('txtDist').innerText = d.toFixed(2) + " km";
-            const price = d <= 3 ? 3 : 3 + (d-3)*0.5;
-            document.getElementById('txtPrecio').innerText = "$" + price.toFixed(2);
-        });
-    }
-</script>
+<input type="text"
+id="inputA"
+placeholder="Origen"
+readonly>
 
-</body>
-</html>
+<input type="text"
+id="inputB"
+placeholder="Destino"
+readonly>
+
+<div id="map"></div>
+
+<div class="stats
