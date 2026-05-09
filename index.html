@@ -126,15 +126,23 @@
     import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
     import { getFirestore, doc, getDoc, setDoc, collection, addDoc, onSnapshot, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-    const firebaseConfig = {
-        apiKey: "AIzaSyAyRrBUmw4OEzS7EmvK_XmDk6Z5rrjLC3A",
-        authDomain: "runcar-6eda0.firebaseapp.com",
-        projectId: "runcar-6eda0",
-        storageBucket: "runcar-6eda0.firebasestorage.app",
-        messagingSenderId: "152627344672",
-        appId: "1:152627344672:web:b420d1c8cbb670069b9345"
-    };
+    // Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
 
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyAyRrBUmw4OEzS7EmvK_XmDk6Z5rrjLC3A",
+  authDomain: "runcar-6eda0.firebaseapp.com",
+  databaseURL: "https://runcar-6eda0-default-rtdb.firebaseio.com",
+  projectId: "runcar-6eda0",
+  storageBucket: "runcar-6eda0.firebasestorage.app",
+  messagingSenderId: "152627344672",
+  appId: "1:152627344672:web:b420d1c8cbb670069b9345"
+};
+
+    // Initialize Firebase
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
