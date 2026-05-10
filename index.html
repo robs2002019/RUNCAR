@@ -245,8 +245,8 @@
         if (data.code === 'Ok') {
             const r = data.routes[0];
             const km = r.distance / 1000;
-            let sugerido = km * 0.70; // Tarifa base 0.70 por km
-            if(sugerido < 2) sugerido = 2.00;
+            let precio = km <= 3 ? 3.00 : 3 + (km-3)*0.30;
+            if(sugerido < 2) sugerido = 1.50;
 
             if (polylineRuta) lMap.removeLayer(polylineRuta);
             polylineRuta = L.geoJSON(r.geometry, {style:{color:'#2ecc71', weight:5}}).addTo(lMap);
