@@ -313,35 +313,150 @@
     };
 
     function abrirChat(id) {
-        cerrarModal();
-        const body = document.getElementById("cliente-view"); // Reutilizar vista
-        if(miRol === 'driver') document.getElementById('driver-view').classList.remove('active-section');
-        else document.getElementById('cliente-view').classList.remove('active-section');
-        
-        const chatUI = document.createElement("div");
-        chatUI.className = "card active-section";
-        chatUI.id = "chat-active";
-        chatUI.innerHTML = `
-            <div style="background:orange; padding:10px; border-radius:10px; margin-bottom:10px; font-size:12px; color:black;">
-                ⚠️ NO CERRAR EL CHAT HASTA QUE FINALICE EL VIAJE
-            </div>
-            <div id="chat-box"></div>
-            <input id="chat-input" placeholder="Escribe un mensaje...">
-            <button class="btn-action" onclick="enviarMensaje('${id}')">ENVIAR</button>
-            <button class="btn-action" style="background:red; margin-top:10px;" onclick="finalizarViaje('${id}')">FINALIZAR VIAJE</button>
-        `;
-        document.querySelector(".container").appendChild(chatUI);
-        
-        onSnapshot(query(collection(db, "viajes", id, "mensajes"), orderBy("timestamp")), (snap) => {
-            const box = document.getElementById("chat-box");
-            box.innerHTML = "";
-            snap.forEach(m => {
-                box.innerHTML += `<p><b>${m.data().user}:</b> ${m.data().msg}</p>`;
-            });
-            box.scrollTop = box.scrollHeight;
-        });
+
+    cerrarModal();
+
+    // Eliminar chats duplicados
+    const oldChat = document.getElementById('chat-active');
+    if(oldChat) oldChat.remove();
+
+    if(miRol === 'driver') {
+        document.getElementById('driver-view').classList.remove('active-section');
+    } else {
+        document.getElementById('cliente-view').classList.remove('active-section');
     }
 
+    const chatUI = document.createElement("div");
+
+    chatUI.className = "card active-section";
+    chatUI.id = "chat-active";
+
+    chatUI.innerHTML = `
+        <div style="background:orange;padding:10px;border-radius:10px;margin-bottom:10px;font-size:12px;color:black;">
+            ⚠️ NO CERRAR EL CHAT HASTA FINALIZAR EL VIAJE
+        </div>
+
+        <div id="chat-box"
+        style="
+            height:250px;
+            overflow-y:auto;
+            background:#e5ddd5;
+            padding:10px;
+            border-radius:10px;
+            margin-bottom:10px;
+            color:black;
+        ">
+        </div>
+
+        <input
+            id="chat-input"
+            placeholder="Escribe un mensaje..."
+            style="margin-bottom:10px;"
+        >
+
+        <button
+            class="btn-action"
+            onclick="enviarMensaje('${id}')"
+        >
+            ENVIAR
+        </button>
+
+        <button
+            class="btn-action"
+            style="background:red;margin-top:10px;"
+            onclick="finalizarViaje('${id}')"
+        >
+            FINALIZAR VIAJE
+        </button>
+    `;
+
+    document.querySelector(".container").appendChild(chatUI);
+
+    // ESCUCHAR MENSAJES EN TIEMPO REAL
+    const mensajesRef = query(
+        collection(db, "viajes", id, "mensajes"),
+        orderBy("timestamp", "asc")
+    );
+
+    onSnapshot(mensajesRef, (snapshot) => {
+
+        const box = document.getElementById("chat-box");
+
+        if(!box) return;
+
+        box.innerHTML = "";
+
+        snapshot.forEach(docSnap => {
+
+            const data = docSnap.data();
+
+            const isMine = data.uid === miUid;
+
+            const div = document.createElement("div");
+
+            div.style.marginBottom = "10px";
+            div.style.display = "flex";
+            div.style.justifyContent = isMine ? "flex-end" : "flex-start";
+
+            div.innerHTML = `
+                <div style="
+                    max-width:75%;
+                    padding:10px;
+                    border-radius:15px;
+                    background:${isMine ? '#2ecc71' : '#ffffff'};
+                    color:${isMine ? 'white' : 'black'};
+                    box-shadow:0 2px 5px rgba(0,0,0,0.2);
+                    word-wrap:break-word;
+                ">
+                    <b style="font-size:11px;">
+                        ${data.user}
+                    </b><br>
+                    ${data.msg}
+                </div>
+            `;
+
+            box.appendChild(div);
+        });
+
+        box.scrollTop = box.scrollHeight;
+
+    }, (error) => {
+        console.error("Error chat:", error);
+    });
+}
+
+window.enviarMensaje = async (id) => {
+
+    const input = document.getElementById("chat-input");
+
+    if(!input) return;
+
+    const texto = input.value.trim();
+
+    if(texto === "") return;
+
+    try {
+
+        await addDoc(
+            collection(db, "viajes", id, "mensajes"),
+            {
+                uid: miUid,
+                user: miNombre,
+                msg: texto,
+                timestamp: serverTimestamp()
+            }
+        );
+
+        input.value = "";
+
+    } catch(error) {
+
+        console.error("Error enviando mensaje:", error);
+
+        alert("No se pudo enviar el mensaje");
+
+    }
+};
     window.enviarMensaje = async (id) => {
         const msg = document.getElementById("chat-input").value;
         if(!msg) return;
