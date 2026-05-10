@@ -21,6 +21,15 @@
         .section { display: none; }
         .active-section { display: block; }
 
+        /* Modales y Flotantes */
+        .modal { display:none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; align-items: center; justify-content: center; color: #333; }
+        .modal-content { background: white; padding: 20px; border-radius: 20px; width: 90%; max-width: 400px; }
+        
+        .chat-box { height: 200px; overflow-y: auto; background: var(--chat-bg); padding: 10px; border-radius: 10px; margin-bottom: 10px; display: flex; flex-direction: column; }
+        .msg { padding: 8px 12px; border-radius: 15px; margin-bottom: 5px; max-width: 80%; }
+        .msg.me { align-self: flex-end; background: #dcf8c6; }
+        .msg.other { align-self: flex-start; background: white; }
+
         .grid-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
         .suggestions { background: white; color: black; position: absolute; width: 100%; z-index: 1000; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); max-height: 150px; overflow-y: auto; }
         .suggestion-item { padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 13px; }
@@ -28,12 +37,13 @@
         table { width: 100%; border-collapse: collapse; margin-top: 10px; color: #333; font-size: 12px; }
         th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
         .resumen-caja { background: var(--accent); color: #000; padding: 15px; border-radius: 15px; margin-top: 10px; font-weight: bold; text-align: center; }
+        .status-pill { padding: 4px 8px; border-radius: 10px; font-size: 10px; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <header>
-    <h2 style="margin:0; letter-spacing: 2px;">RUN <span style="color:var(--primary)">CAR</span></h2>
+    <h2 style="margin:0; letter-spacing: 2px;">RUN <span style="color:var(--primary)">CAR</span> PRO</h2>
 </header>
 
 <div class="container">
@@ -44,31 +54,35 @@
             <input type="password" id="auth-pass" placeholder="Contraseña">
             <div id="reg-fields" style="display:none;">
                 <input type="text" id="reg-nombre" placeholder="Nombre Completo">
-                <div style="display: flex; gap: 5px;">
-                    <select id="reg-prefijo" style="flex: 1;"></select>
-                    <input type="tel" id="reg-tel" placeholder="WhatsApp" style="flex: 2;">
-                </div>
                 <select id="reg-rol">
                     <option value="cliente">Soy Cliente</option>
                     <option value="driver">Quiero ser Conductor</option>
                 </select>
             </div>
-            <button class="btn-action" onclick="ejecutarAuth()" id="btn-auth-main">INGRESAR</button>
-            <p onclick="switchAuth()" style="text-align:center; cursor:pointer; color:#666;">¿No tienes cuenta? Regístrate</p>
+            <button class="btn-action" onclick="ejecutarAuth()">INGRESAR</button>
+            <p onclick="switchAuth()" style="text-align:center; cursor:pointer; color:#666; font-size: 13px;">¿No tienes cuenta? Regístrate</p>
+        </div>
+    </div>
+
+    <div id="admin-view" class="section">
+        <div class="card">
+            <h3 style="margin:0">Panel de Administración</h3>
+            <p>Control de Usuarios</p>
+            <div id="lista-usuarios-admin"></div>
         </div>
     </div>
 
     <div id="cliente-view" class="section">
         <div id="map"></div>
         <div class="card">
-            <button onclick="usarGPS()" style="background:#3498db; margin-bottom:10px;" class="btn-action">📍 USAR MI UBICACIÓN ACTUAL</button>
+            <button onclick="usarGPS()" style="background:#3498db; margin-bottom:10px;" class="btn-action">📍 MI UBICACIÓN (PUNTO A)</button>
             
             <div style="position:relative;">
-                <input id="origin" placeholder="📍 Origen (Dirección o Coordenadas)" oninput="buscarDireccion(this, 'sug-origin')">
+                <input id="origin" placeholder="📍 Punto A (Dirección o Coordenadas)" oninput="buscarDireccion(this, 'sug-origin')">
                 <div id="sug-origin" class="suggestions"></div>
             </div>
             <div style="position:relative;">
-                <input id="destination" placeholder="🏁 Destino (Dirección o Coordenadas)" oninput="buscarDireccion(this, 'sug-dest')">
+                <input id="destination" placeholder="🏁 Punto B (Dirección o Coordenadas)" oninput="buscarDireccion(this, 'sug-dest')">
                 <div id="sug-dest" class="suggestions"></div>
             </div>
 
@@ -80,32 +94,65 @@
             </div>
 
             <div id="precio-area" style="display:none; text-align:center; border-top: 1px solid #eee; margin-top:10px; padding-top:10px;">
-                <p style="margin:5px 0;">Distancia: <b id="distanciaText">0 km</b></p>
-                <p style="margin:5px 0;">Tarifa sugerida: <b id="priceMaps">$0.00</b></p>
-                <label>Tu oferta ($):</label>
+                <p style="margin:5px 0;">Kilometraje: <b id="distanciaText">0 km</b></p>
+                <p style="margin:5px 0;">Oferta Sugerida: <b id="priceMaps">$0.00</b></p>
+                <label>Tu Propuesta ($):</label>
                 <input type="number" id="oferta-cliente" style="font-size:20px; text-align:center; color:var(--primary); font-weight:bold;">
-                <button class="btn-action" id="btn-solicitar" onclick="publicarViaje()">SOLICITAR VIAJE</button>
+                <button class="btn-action" onclick="publicarViaje()">ENVIAR OFERTA A DRIVERS</button>
             </div>
-            
-            <button id="btn-calc" class="btn-action" style="background:#444;" onclick="calcularRutaOSRM()">CALCULAR RUTA Y PRECIO</button>
+            <button id="btn-calc" class="btn-action" style="background:#444;" onclick="calcularRutaOSRM()">CALCULAR DISTANCIA</button>
         </div>
     </div>
 
     <div id="driver-view" class="section">
         <div class="card">
-            <h4 style="margin:0">Ganancias (Últimos 5 días)</h4>
+            <h4 style="margin:0">Ingresos (Últimos 5 días)</h4>
             <div id="driver-stats"></div>
         </div>
-        <h4 style="color:var(--primary)">Viajes Disponibles</h4>
+        <h4 style="color:var(--primary)">Viajes Solicitados</h4>
         <div id="lista-viajes-global"></div>
     </div>
 
     <button id="btn-logout" class="btn-action" style="display:none; background:var(--danger); margin-top:20px;" onclick="cerrarSesion()">CERRAR SESIÓN</button>
 </div>
 
+<div id="modal-oferta" class="modal">
+    <div class="modal-content">
+        <h3 id="m-cliente-nom">Solicitud de Viaje</h3>
+        <p><b>Origen:</b> <span id="m-origen"></span></p>
+        <p><b>Destino:</b> <span id="m-destino"></span></p>
+        <p><b>KM:</b> <span id="m-km"></span> | <b>App Sugiere:</b> <span id="m-sug"></span></p>
+        <div style="background:#f9f9f9; padding: 10px; border-radius: 10px;">
+            <p><b>OFERTA DEL CLIENTE:</b> <span style="font-size:20px; color:var(--primary)" id="m-oferta-cl"></span></p>
+        </div>
+        <input type="number" id="contra-oferta-driver" placeholder="Tu contrapropuesta ($)">
+        <div style="display:flex; gap:5px; margin-top:10px;">
+            <button class="btn-action" style="background:var(--primary)" onclick="responderViaje('aceptado')">ACEPTAR</button>
+            <button class="btn-action" style="background:var(--accent); color:black" onclick="responderViaje('contraoferta')">CONTRAOFERTAR</button>
+        </div>
+        <button class="btn-action" style="background:var(--danger)" onclick="cerrarModal()">RECHAZAR</button>
+    </div>
+</div>
+
+<div id="modal-chat" class="modal">
+    <div class="modal-content">
+        <h3 style="margin:0">Chat en Vivo</h3>
+        <div style="background:#fff3cd; color:#856404; padding:8px; font-size:11px; margin-bottom:10px; border-radius:5px;">
+            ⚠️ ALERTA: No cierres este chat hasta finalizar el viaje.
+        </div>
+        <div id="chat-mensajes" class="chat-box"></div>
+        <div style="display:flex; gap:5px;">
+            <input type="text" id="chat-input" placeholder="Escribe mensaje...">
+            <button onclick="enviarMensaje()" style="width:80px;" class="btn-action">ENVIAR</button>
+        </div>
+        <button class="btn-action" style="background:#444; margin-top:10px;" onclick="document.getElementById('modal-chat').style.display='none'">MINIMIZAR</button>
+        <button class="btn-action" style="background:var(--danger)" onclick="finalizarViaje()">FINALIZAR VIAJE</button>
+    </div>
+</div>
+
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs, query, where, onSnapshot, serverTimestamp, doc, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, getDocs, query, where, onSnapshot, serverTimestamp, doc, updateDoc, deleteDoc, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-auth.js";
 
     const firebaseConfig = {
@@ -124,16 +171,16 @@
     let lMap, markerOrigen, markerDestino, polylineRuta;
     let coordsOrigen = null, coordsDestino = null;
     let miRol = "", miUid = "", miNombre = "", isReg = false;
+    let viajeActivoId = null;
 
-    // --- INICIALIZAR MAPA ---
+    // --- MAPA E INTERACCIÓN ---
     window.initLeaflet = () => {
         if (lMap) return;
-        lMap = L.map('map').setView([13.7, -89.2], 12);
+        lMap = L.map('map').setView([13.689, -89.187], 13);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(lMap);
 
-        // Marcadores arrastrables
-        markerOrigen = L.marker([13.7, -89.2], {draggable: true}).addTo(lMap).bindPopup("Origen (A)");
-        markerDestino = L.marker([13.71, -89.21], {draggable: true}).addTo(lMap).bindPopup("Destino (B)");
+        markerOrigen = L.marker([13.689, -89.187], {draggable: true}).addTo(lMap).bindPopup("Origen (A)");
+        markerDestino = L.marker([13.695, -89.200], {draggable: true}).addTo(lMap).bindPopup("Destino (B)");
 
         markerOrigen.on('dragend', (e) => reverseGeocode(e.target.getLatLng(), 'origin'));
         markerDestino.on('dragend', (e) => reverseGeocode(e.target.getLatLng(), 'destination'));
@@ -160,25 +207,22 @@
 
     window.buscarDireccion = async (input, targetId) => {
         const val = input.value;
-        if(val.includes(',')) { // Detectar si son coordenadas manuales
-            const parts = val.split(',');
-            if(parts.length === 2) {
-                const lat = parseFloat(parts[0]), lon = parseFloat(parts[1]);
-                if(!isNaN(lat)) {
-                    const c = [lat, lon];
-                    if(input.id === 'origin') { coordsOrigen = c; markerOrigen.setLatLng(c); }
-                    else { coordsDestino = c; markerDestino.setLatLng(c); }
-                }
+        if(val.includes(',')) { // Soporte para coordenadas directas
+            const p = val.split(',');
+            if(p.length === 2 && !isNaN(p[0])) {
+                const c = [parseFloat(p[0]), parseFloat(p[1])];
+                if(input.id === 'origin') { coordsOrigen = c; markerOrigen.setLatLng(c); }
+                else { coordsDestino = c; markerDestino.setLatLng(c); }
             }
         }
-        // Búsqueda normal de texto
         if (val.length < 4) return;
         const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(val)}&limit=5`);
         const data = await res.json();
         let h = "";
         data.features.forEach(f => {
             const lbl = `${f.properties.name || ''} ${f.properties.city || ''}`;
-            h += `<div class="suggestion-item" onclick="seleccionarPos('${input.id}','${lbl}',${f.geometry.coordinates[1]},${f.geometry.coordinates[0]},'${targetId}')">${lbl}</div>`;
+            const lonlat = f.geometry.coordinates;
+            h += `<div class="suggestion-item" onclick="seleccionarPos('${input.id}','${lbl}',${lonlat[1]},${lonlat[0]},'${targetId}')">${lbl}</div>`;
         });
         document.getElementById(targetId).innerHTML = h;
     };
@@ -193,28 +237,29 @@
     };
 
     window.calcularRutaOSRM = async () => {
-        // Si no hay coords por búsqueda, usar las de los marcadores (el usuario pudo moverlos)
-        if(!coordsOrigen) coordsOrigen = [markerOrigen.getLatLng().lat, markerOrigen.getLatLng().lng];
-        if(!coordsDestino) coordsDestino = [markerDestino.getLatLng().lat, markerDestino.getLatLng().lng];
+        const latA = markerOrigen.getLatLng().lat, lonA = markerOrigen.getLatLng().lng;
+        const latB = markerDestino.getLatLng().lat, lonB = markerDestino.getLatLng().lng;
 
-        const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${coordsOrigen[1]},${coordsOrigen[0]};${coordsDestino[1]},${coordsDestino[0]}?overview=full&geometries=geojson`);
+        const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${lonA},${latA};${lonB},${latB}?overview=full&geometries=geojson`);
         const data = await res.json();
         if (data.code === 'Ok') {
             const r = data.routes[0];
             const km = r.distance / 1000;
-            let p = km <= 3 ? 2.00 : 2 + (km-3)*0.50; // Ejemplo tarifa
-            
+            let sugerido = km * 0.70; // Tarifa base 0.70 por km
+            if(sugerido < 2) sugerido = 2.00;
+
             if (polylineRuta) lMap.removeLayer(polylineRuta);
             polylineRuta = L.geoJSON(r.geometry, {style:{color:'#2ecc71', weight:5}}).addTo(lMap);
             lMap.fitBounds(polylineRuta.getBounds());
 
             document.getElementById("distanciaText").innerText = km.toFixed(2) + " km";
-            document.getElementById("priceMaps").innerText = "$" + p.toFixed(2);
-            document.getElementById("oferta-cliente").value = p.toFixed(2);
+            document.getElementById("priceMaps").innerText = "$" + sugerido.toFixed(2);
+            document.getElementById("oferta-cliente").value = sugerido.toFixed(2);
             document.getElementById("precio-area").style.display = 'block';
         }
     };
 
+    // --- FLUJO DE VIAJE ---
     window.publicarViaje = async () => {
         const viaje = {
             clienteId: miUid,
@@ -222,7 +267,8 @@
             origen: document.getElementById("origin").value,
             destino: document.getElementById("destination").value,
             km: document.getElementById("distanciaText").innerText,
-            ofertaActual: parseFloat(document.getElementById("oferta-cliente").value),
+            ofertaApp: document.getElementById("priceMaps").innerText,
+            ofertaCliente: parseFloat(document.getElementById("oferta-cliente").value),
             detalles: {
                 adultos: document.getElementById("p-adultos").value,
                 bebes: document.getElementById("p-bebes").value,
@@ -230,10 +276,112 @@
                 carga: document.getElementById("p-carga").value
             },
             estado: "buscando",
-            timestamp: serverTimestamp()
+            timestamp: serverTimestamp(),
+            fecha: new Date().toISOString().split('T')[0]
         };
-        await addDoc(collection(db, "viajes"), viaje);
-        alert("Viaje solicitado con éxito");
+        const docRef = await addDoc(collection(db, "viajes"), viaje);
+        viajeActivoId = docRef.id;
+        alert("Buscando conductores...");
+        escucharRespuestaDriver(viajeActivoId);
+    };
+
+    function escucharRespuestaDriver(id) {
+        onSnapshot(doc(db, "viajes", id), (snap) => {
+            const v = snap.data();
+            if(v.estado === 'contraoferta') {
+                if(confirm(`El driver ofrece: $${v.ofertaDriver}. ¿Aceptas?`)) {
+                    updateDoc(doc(db, "viajes", id), { estado: 'aceptado' });
+                } else {
+                    updateDoc(doc(db, "viajes", id), { estado: 'buscando' });
+                }
+            }
+            if(v.estado === 'aceptado') {
+                abrirChat(id);
+            }
+        });
+    }
+
+    // --- DRIVER LÓGICA ---
+    function cargarViajesGlobales() {
+        onSnapshot(query(collection(db, "viajes"), where("estado", "==", "buscando")), (snap) => {
+            let h = "";
+            snap.forEach(d => {
+                const v = d.data();
+                h += `<div class="card" onclick="verPropuesta('${d.id}')">
+                    <b>${v.clienteNombre}</b> - ${v.km}<br>
+                    <small>${v.origen.substring(0,30)}...</small><br>
+                    <b style="color:var(--primary)">Oferta: $${v.ofertaCliente}</b>
+                </div>`;
+            });
+            document.getElementById("lista-viajes-global").innerHTML = h || "No hay viajes cerca";
+        });
+    }
+
+    window.verPropuesta = async (id) => {
+        viajeActivoId = id;
+        const snap = await getDocs(query(collection(db, "viajes")));
+        const v = snap.docs.find(d => d.id === id).data();
+        
+        document.getElementById("m-cliente-nom").innerText = v.clienteNombre;
+        document.getElementById("m-origen").innerText = v.origen;
+        document.getElementById("m-destino").innerText = v.destino;
+        document.getElementById("m-km").innerText = v.km;
+        document.getElementById("m-sug").innerText = v.ofertaApp;
+        document.getElementById("m-oferta-cl").innerText = "$" + v.ofertaCliente;
+        document.getElementById("modal-oferta").style.display = "flex";
+    };
+
+    window.responderViaje = async (status) => {
+        const update = { estado: status, driverId: miUid, driverNombre: miNombre };
+        if(status === 'contraoferta') {
+            update.ofertaDriver = parseFloat(document.getElementById("contra-oferta-driver").value);
+        }
+        await updateDoc(doc(db, "viajes", viajeActivoId), update);
+        document.getElementById("modal-oferta").style.display = "none";
+        if(status === 'aceptado') abrirChat(viajeActivoId);
+    };
+
+    window.cerrarModal = () => document.getElementById("modal-oferta").style.display = "none";
+
+    // --- CHAT ---
+    function abrirChat(id) {
+        viajeActivoId = id;
+        document.getElementById("modal-chat").style.display = "flex";
+        onSnapshot(query(collection(db, `viajes/${id}/chat`), orderBy("time", "asc")), (snap) => {
+            let h = "";
+            snap.forEach(m => {
+                const d = m.data();
+                const clase = d.user === miUid ? 'me' : 'other';
+                h += `<div class="msg ${clase}">${d.text}</div>`;
+            });
+            const box = document.getElementById("chat-mensajes");
+            box.innerHTML = h;
+            box.scrollTop = box.scrollHeight;
+        });
+    }
+
+    window.enviarMensaje = async () => {
+        const text = document.getElementById("chat-input").value;
+        if(!text) return;
+        await addDoc(collection(db, `viajes/${viajeActivoId}/chat`), {
+            text, user: miUid, time: serverTimestamp()
+        });
+        document.getElementById("chat-input").value = "";
+    };
+
+    window.finalizarViaje = async () => {
+        if(confirm("¿Confirmas que el viaje terminó y recibiste el pago?")) {
+            const vSnap = await (await getDocs(query(collection(db, "viajes")))).docs.find(d => d.id === viajeActivoId);
+            const vData = vSnap.data();
+            const precioFinal = vData.ofertaDriver || vData.ofertaCliente;
+            
+            await updateDoc(doc(db, "viajes", viajeActivoId), { 
+                estado: "finalizado", 
+                precioFinal: precioFinal,
+                fechaFinalizado: new Date().toISOString().split('T')[0]
+            });
+            location.reload();
+        }
     };
 
     // --- CONTABILIDAD DRIVER ---
@@ -266,11 +414,34 @@
             sumaTotal += total;
             tabla += `<tr><td>${dia}</td><td>$${total.toFixed(2)}</td><td style="color:red">-$${comision.toFixed(2)}</td></tr>`;
         });
-        tabla += `</table><div class="resumen-caja">A pagar (Comisión Total): $${(sumaTotal * 0.08).toFixed(2)}</div>`;
+        tabla += `</table><div class="resumen-caja">Comisión Total a Pagar: $${(sumaTotal * 0.08).toFixed(2)}</div>`;
         document.getElementById("driver-stats").innerHTML = tabla;
     }
 
-    // --- LÓGICA DE AUTH SIMPLIFICADA ---
+    // --- PANEL ADMIN ---
+    async function cargarAdmin() {
+        onSnapshot(collection(db, "usuarios"), (snap) => {
+            let h = "<table><tr><th>Nombre</th><th>Rol</th><th>Estado</th></tr>";
+            snap.forEach(uDoc => {
+                const u = uDoc.data();
+                const color = u.activo === false ? 'red' : 'green';
+                h += `<tr>
+                    <td>${u.nombre}</td>
+                    <td>${u.rol}</td>
+                    <td><button onclick="toggleUser('${uDoc.id}', ${u.activo !== false})" style="background:${color}; color:white; border:none; border-radius:5px; padding:5px;">
+                        ${u.activo !== false ? 'Activo' : 'Inactivo'}
+                    </button></td>
+                </tr>`;
+            });
+            document.getElementById("lista-usuarios-admin").innerHTML = h + "</table>";
+        });
+    }
+
+    window.toggleUser = async (id, currentStatus) => {
+        await updateDoc(doc(db, "usuarios", id), { activo: !currentStatus });
+    };
+
+    // --- AUTH ---
     window.switchAuth = () => {
         isReg = !isReg;
         document.getElementById('reg-fields').style.display = isReg ? 'block' : 'none';
@@ -279,17 +450,20 @@
     window.ejecutarAuth = async () => {
         const mail = document.getElementById('auth-email').value;
         const pass = document.getElementById('auth-pass').value;
-        if(isReg) {
-            const uc = await createUserWithEmailAndPassword(auth, mail, pass);
-            await addDoc(collection(db, "usuarios"), {
-                uid: uc.user.uid,
-                nombre: document.getElementById('reg-nombre').value,
-                rol: document.getElementById('reg-rol').value,
-                whatsapp: document.getElementById('reg-prefijo').value + document.getElementById('reg-tel').value
-            });
-        } else {
-            await signInWithEmailAndPassword(auth, mail, pass);
-        }
+        try {
+            if(isReg) {
+                const uc = await createUserWithEmailAndPassword(auth, mail, pass);
+                await addDoc(collection(db, "usuarios"), {
+                    uid: uc.user.uid,
+                    nombre: document.getElementById('reg-nombre').value,
+                    rol: document.getElementById('reg-rol').value,
+                    email: mail,
+                    activo: true
+                });
+            } else {
+                await signInWithEmailAndPassword(auth, mail, pass);
+            }
+        } catch(e) { alert("Error: " + e.message); }
     };
 
     onAuthStateChanged(auth, async (u) => {
@@ -299,14 +473,21 @@
             const s = await getDocs(q);
             s.forEach(d => {
                 const user = d.data();
+                if(user.activo === false) { alert("Tu cuenta está desactivada."); cerrarSesion(); return; }
+                
                 miRol = user.rol; miNombre = user.nombre;
                 document.getElementById('auth-container').style.display = 'none';
                 document.getElementById('btn-logout').style.display = 'block';
-                if(miRol === 'cliente') {
+
+                if(user.email === 'robs2002004@gmail.com') {
+                    document.getElementById('admin-view').classList.add('active-section');
+                    cargarAdmin();
+                } else if(miRol === 'cliente') {
                     document.getElementById('cliente-view').classList.add('active-section');
                     initLeaflet();
                 } else {
                     document.getElementById('driver-view').classList.add('active-section');
+                    cargarViajesGlobales();
                     mostrarContabilidad();
                 }
             });
@@ -314,21 +495,6 @@
     });
 
     window.cerrarSesion = () => signOut(auth).then(() => location.reload());
-
-    // Cargar prefijos de países
-    async function cargarPaises() {
-        const sel = document.getElementById('reg-prefijo');
-        try {
-            const res = await fetch('https://restcountries.com/v3.1/all?fields=idd,cca2');
-            const data = await res.json();
-            data.forEach(c => {
-                const code = c.idd.root + (c.idd.suffixes ? c.idd.suffixes[0] : "");
-                if(code) sel.add(new Option(`${c.cca2} (${code})`, code));
-            });
-        } catch(e) { sel.add(new Option("+503", "+503")); }
-    }
-    cargarPaises();
 </script>
 </body>
-</html>
 </html>
