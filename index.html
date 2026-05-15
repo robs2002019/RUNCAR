@@ -32,6 +32,8 @@
         th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
         
         #chat-box { height: 200px; overflow-y: auto; background: var(--chat-bg); padding: 10px; border-radius: 10px; margin-bottom: 10px; }
+        .file-label { font-size: 12px; display: block; margin-top: 6px; color: #555; font-weight: bold; }
+        .admin-box { background: #f9f9f9; padding: 10px; border-radius: 10px; margin-bottom: 10px; border-left: 4px solid var(--primary); }
     </style>
 </head>
 <body>
@@ -47,6 +49,7 @@
             <h3 style="text-align:center; margin-top:0;">Acceso</h3>
             <input type="email" id="auth-email" placeholder="Correo">
             <input type="password" id="auth-pass" placeholder="Contraseña">
+            
             <div id="reg-fields" style="display:none;">
                 <input type="text" id="reg-nombre" placeholder="Nombre Completo">
                 <div style="display: flex; gap: 5px;">
@@ -57,7 +60,23 @@
                     <option value="cliente">Soy Cliente</option>
                     <option value="driver">Quiero ser Conductor</option>
                 </select>
+
+                <!-- Campos específicos para el conductor -->
+                <div id="driver-register-fields" style="display: none; border-top: 1px dashed #ccc; margin-top: 10px; padding-top: 5px;">
+                    <input type="text" id="reg-placa" placeholder="Número de Placa">
+                    <input type="number" id="reg-anio" placeholder="Año del Vehículo (Mayor a 2014)">
+                    
+                    <label class="file-label">Foto de Licencia de Conducir:</label>
+                    <input type="file" id="reg-foto-licencia" accept="image/*">
+                    
+                    <label class="file-label">Foto de Tarjeta de Circulación:</label>
+                    <input type="file" id="reg-foto-tarjeta" accept="image/*">
+                    
+                    <label class="file-label">Foto del Vehículo:</label>
+                    <input type="file" id="reg-foto-vehiculo" accept="image/*">
+                </div>
             </div>
+            
             <button class="btn-action" id="btn-auth-main">INGRESAR</button>
             <p id="btn-switch-auth" style="text-align:center; cursor:pointer; color:#666;">¿No tienes cuenta? Regístrate</p>
         </div>
@@ -106,7 +125,12 @@
     <div id="admin-view" class="section">
         <div class="card">
             <h3>Panel de Administración</h3>
-            <div id="admin-users-list"></div>
+            
+            <h4 style="border-bottom: 2px solid var(--primary); padding-bottom: 5px;">Clientes Registrados</h4>
+            <div id="admin-clientes-list"></div>
+            
+            <h4 style="border-bottom: 2px solid var(--accent); padding-bottom: 5px; margin-top:25px;">Conductores Disponibles</h4>
+            <div id="admin-drivers-list"></div>
         </div>
     </div>
 
@@ -139,6 +163,20 @@
     let lMap, markerOrigen, markerDestino, polylineRuta;
     let coordsOrigen = null, coordsDestino = null;
     let miRol = "", miUid = "", miNombre = "", isReg = false;
+
+    // --- CONTROL DE CAMPOS VISIBLES EN REGISTRO ---
+    document.getElementById('reg-rol').addEventListener('change', function() {
+        document.getElementById('driver-register-fields').style.display = this.value === 'driver' ? 'block' : 'none';
+    });
+
+    // Convierte un archivo cargado en string Base64 para almacenamiento sencillo
+    const toBase64 = file => new Promise((resolve, reject) => {
+        if(!file) return resolve("");
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+    });
 
     // --- MAPA ---
     window.initLeaflet = () => {
@@ -259,7 +297,7 @@
             bebes: document.getElementById("p-bebes").value,
             mascotas: document.getElementById("p-mascotas").value,
             carga: document.getElementById("p-carga").value,
-            notas: document.getElementById("p-notes").value, // Corregido: ID original apuntaba a un elemento inexistente 'notasText'
+            notas: document.getElementById("p-notes").value,
             estado: "buscando",
             timestamp: serverTimestamp()
         };
@@ -315,7 +353,7 @@
     window.responderDriver = async (id, accion, valor = null) => {
         const docRef = doc(db, "viajes", id);
         if(accion === 'aceptar') {
-            await updateDoc(docRef, { estado: 'aceptado', driverId: miUid, driverNombre: miNombre });
+            await updateDoc(docRef, { estado: 'accepted', driverId: miUid, driverNombre: miNombre });
             cerrarModal();
             abrirChat(id);
         } else if (accion === 'contraoferta') {
@@ -467,26 +505,29 @@
         location.reload();
     };
 
-    // --- CONTABILIDAD Y PANEL ADMIN ---
+    // --- CONTABILIDAD INDIVIDUAL DEL CONDUCTOR ---
+    async function obtenerSubtotalesDriver(driverUid, diasArray) {
+        const q = query(collection(db, "viajes"), where("driverId", "==", driverUid), where("estado", "==", "finalizado"));
+        const snap = await getDocs(q);
+        let subTotales = {};
+        diasArray.forEach(d => subTotales[d] = 0);
+        snap.forEach(doc => {
+            const v = doc.data();
+            if (subTotales[v.fechaFinalizado] !== undefined) subTotales[v.fechaFinalizado] += v.precioFinal || 0;
+        });
+        return subTotales;
+    }
+
     async function mostrarContabilidad() {
         const hoy = new Date();
         const dias = [];
         for(let i=0; i<5; i++) {
             let d = new Date();
             d.setDate(hoy.getDate() - i);
-            dias.push(d.toISOString().split('T')[0]); // Corregido: 'd.push' generaba error de ejecución sobre objeto Date. Cambiado a 'dias.push'.
+            dias.push(d.toISOString().split('T')[0]);
         }
 
-        const q = query(collection(db, "viajes"), where("driverId", "==", miUid), where("estado", "==", "finalizado"));
-        const snap = await getDocs(q);
-        let subTotales = {};
-        dias.forEach(d => subTotales[d] = 0);
-
-        snap.forEach(doc => {
-            const v = doc.data();
-            if (subTotales[v.fechaFinalizado] !== undefined) subTotales[v.fechaFinalizado] += v.precioFinal || 0;
-        });
-
+        const subTotales = await obtenerSubtotalesDriver(miUid, dias);
         let tabla = `<table><tr><th>Fecha</th><th>Total</th><th>8%</th></tr>`;
         dias.forEach(dia => {
             const total = subTotales[dia];
@@ -496,22 +537,64 @@
         document.getElementById("driver-stats").innerHTML = tabla;
     }
 
+    // --- PANEL ADMIN ROBUSTECIDO ---
     async function initAdmin() {
         const snap = await getDocs(collection(db, "usuarios"));
-        const container = document.getElementById("admin-users-list");
-        container.innerHTML = "<h4>Gestión de Usuarios</h4>";
-        snap.forEach(uDoc => {
+        const clientContainer = document.getElementById("admin-clientes-list");
+        const driverContainer = document.getElementById("admin-drivers-list");
+        
+        clientContainer.innerHTML = "";
+        driverContainer.innerHTML = "";
+
+        // Listado de fechas de los últimos 5 días para calcular comisiones en admin
+        const hoy = new Date();
+        const dias = [];
+        for(let i=0; i<5; i++) {
+            let d = new Date();
+            d.setDate(hoy.getDate() - i);
+            dias.push(d.toISOString().split('T')[0]);
+        }
+
+        for (const uDoc of snap.docs) {
             const u = uDoc.data();
             const div = document.createElement("div");
-            div.style.borderBottom = "1px solid #ccc";
-            div.style.padding = "10px";
-            div.innerHTML = `
-                <p>${u.nombre} (${u.rol}) - ${u.activo !== false ? '✅ Activo' : '❌ Inactivo'}</p>
-                <button id="btn-toggle-${uDoc.id}">Alternar Estado</button>
-            `;
-            container.appendChild(div);
-            document.getElementById(`btn-toggle-${uDoc.id}`).onclick = () => window.toggleUser(uDoc.id, u.activo !== false);
-        });
+            div.className = "admin-box";
+            
+            if(u.rol === 'cliente') {
+                div.innerHTML = `
+                    <p style="margin:4px 0;"><b>Nombre:</b> ${u.nombre}</p>
+                    <p style="margin:4px 0;"><small><b>WhatsApp:</b> ${u.whatsapp || 'N/A'}</small></p>
+                    <p style="margin:4px 0;"><small><b>Estado:</b> ${u.activo !== false ? '✅ Activo' : '❌ Inactivo'}</small></p>
+                    <button class="btn-action" style="padding:6px; font-size:11px; background:#555;" id="btn-toggle-${uDoc.id}">Alternar Estado</button>
+                `;
+                clientContainer.appendChild(div);
+                document.getElementById(`btn-toggle-${uDoc.id}`).onclick = () => window.toggleUser(uDoc.id, u.activo !== false);
+            } 
+            else if(u.rol === 'driver') {
+                // Obtenemos los ingresos de este conductor específico en tiempo real para el admin
+                const subTotales = await obtenerSubtotalesDriver(u.uid, dias);
+                let totalSuma = 0;
+                dias.forEach(d => totalSuma += subTotales[d]);
+                let comisionSuma = totalSuma * 0.08;
+
+                div.innerHTML = `
+                    <p style="margin:4px 0;"><b>Conductor:</b> ${u.nombre}</p>
+                    <p style="margin:4px 0;"><small><b>Placa:</b> ${u.placa || 'N/A'} | <b>Año:</b> ${u.anio || 'N/A'}</small></p>
+                    <p style="margin:4px 0; color:#27ae60;"><small><b>Ingreso (5d):</b> $${totalSuma.toFixed(2)} | <b>Comisión (8%):</b> $${comisionSuma.toFixed(2)}</small></p>
+                    
+                    <div style="margin-top:8px; display:flex; gap:5px; flex-wrap:wrap;">
+                        ${u.fotoLicencia ? `<a href="${u.fotoLicencia}" target="_blank" style="font-size:11px; color:#3498db; text-decoration:none; font-weight:bold;">📄 Ver Licencia</a>` : ''}
+                        ${u.fotoTarjeta ? `<a href="${u.fotoTarjeta}" target="_blank" style="font-size:11px; color:#3498db; text-decoration:none; font-weight:bold;">📄 Ver Tarjeta</a>` : ''}
+                        ${u.fotoVehiculo ? `<a href="${u.fotoVehiculo}" target="_blank" style="font-size:11px; color:#3498db; text-decoration:none; font-weight:bold;">🚗 Ver Auto</a>` : ''}
+                    </div>
+
+                    <p style="margin:6px 0 4px 0;"><small><b>Estado:</b> ${u.activo !== false ? '✅ Activo' : '❌ Inactivo'}</small></p>
+                    <button class="btn-action" style="padding:6px; font-size:11px; background:#555;" id="btn-toggle-${uDoc.id}">Alternar Estado</button>
+                `;
+                driverContainer.appendChild(div);
+                document.getElementById(`btn-toggle-${uDoc.id}`).onclick = () => window.toggleUser(uDoc.id, u.activo !== false);
+            }
+        }
     }
 
     window.toggleUser = async (id, actual) => {
@@ -521,25 +604,53 @@
 
     window.cerrarModal = () => document.getElementById("modal-negociacion").style.display = "none";
 
-    // --- AUTENTICACIÓN ---
+    // --- AUTENTICACIÓN Y FILTROS DE REGISTRO ---
     window.switchAuth = () => {
         isReg = !isReg;
         document.getElementById('reg-fields').style.display = isReg ? 'block' : 'none';
         document.getElementById('btn-auth-main').innerText = isReg ? 'REGISTRARME' : 'INGRESAR';
+        if(!isReg) document.getElementById('driver-register-fields').style.display = 'none';
     };
 
     window.ejecutarAuth = async () => {
         const mail = document.getElementById('auth-email').value;
         const pass = document.getElementById('auth-pass').value;
+        
         try {
             if(isReg) {
+                const rolSeleccionado = document.getElementById('reg-rol').value;
+                let datosVehiculo = {};
+
+                // Regla crítica de negocio: Validar año mayor a 2014 si es conductor
+                if(rolSeleccionado === 'driver') {
+                    const anio = parseInt(document.getElementById('reg-anio').value);
+                    if(isNaN(anio) || anio <= 2014) {
+                        alert("Error: El año del vehículo debe ser estrictamente mayor al 2014 para poder registrarte.");
+                        return;
+                    }
+
+                    // Conversión asíncrona de archivos multimedia cargados en el formulario
+                    const fLic = document.getElementById('reg-foto-licencia').files[0];
+                    const fTar = document.getElementById('reg-foto-tarjeta').files[0];
+                    const fVeh = document.getElementById('reg-foto-vehiculo').files[0];
+
+                    datosVehiculo = {
+                        placa: document.getElementById('reg-placa').value,
+                        anio: anio,
+                        fotoLicencia: fLic ? await toBase64(fLic) : "",
+                        fotoTarjeta: fTar ? await toBase64(fTar) : "",
+                        fotoVehiculo: fVeh ? await toBase64(fVeh) : ""
+                    };
+                }
+
                 const uc = await createUserWithEmailAndPassword(auth, mail, pass);
                 await addDoc(collection(db, "usuarios"), {
                     uid: uc.user.uid,
                     nombre: document.getElementById('reg-nombre').value,
-                    rol: document.getElementById('reg-rol').value,
+                    rol: rolSeleccionado,
                     whatsapp: document.getElementById('reg-prefijo').value + document.getElementById('reg-tel').value,
-                    activo: true
+                    activo: true,
+                    ...datosVehiculo
                 });
             } else {
                 await signInWithEmailAndPassword(auth, mail, pass);
@@ -550,22 +661,23 @@
     onAuthStateChanged(auth, async (u) => {
         if(u) {
             miUid = u.uid;
+            const q = query(collection(db, "usuarios"), where("uid", "==", u.uid));
+            const s = await getDocs(q);
+            
             if(u.email === "robs2002004@gmail.com") {
+                miRol = "admin";
                 document.getElementById('auth-container').style.display = 'none';
                 document.getElementById('admin-view').classList.add('active-section');
                 document.getElementById('btn-logout').style.display = 'block';
                 initAdmin();
                 return;
             }
-            const q = query(collection(db, "usuarios"), where("uid", "==", u.uid));
-            const s = await getDocs(q);
-            
+
             if(s.empty) {
-                // Si el usuario se acaba de registrar, damos un pequeño margen para que el documento se guarde en Firestore
                 setTimeout(async () => {
                     const retrySnap = await getDocs(q);
                     if(!retrySnap.empty) procesarLoginUsuario(retrySnap.docs[0].data());
-                }, 1000);
+                }, 1200);
             } else {
                 procesarLoginUsuario(s.docs[0].data());
             }
@@ -573,7 +685,7 @@
     });
 
     function procesarLoginUsuario(user) {
-        if(user.activo === false) { alert("Usuario desactivado"); cerrarSesion(); return; }
+        if(user.activo === false) { alert("Usuario desactivado por la administración."); cerrarSesion(); return; }
         miRol = user.rol; miNombre = user.nombre;
         document.getElementById('auth-container').style.display = 'none';
         document.getElementById('btn-logout').style.display = 'block';
@@ -583,31 +695,40 @@
             initLeaflet();
             
             onSnapshot(query(collection(db, "viajes"), where("clienteId", "==", miUid)), (snap) => {
-                snap.forEach(dv => {
-                    const dataViaje = dv.data();
-                    if(dataViaje.estado === 'negociando' && dataViaje.ofertaDe === 'driver') {
-                        abrirNegociacionCliente(dv.id, dataViaje);
-                    }
-                    if(dataViaje.estado === 'rechazado') {
-                        cerrarModal();
-                    }
-                    if(dataViaje.estado === 'aceptado' && !document.getElementById('chat-active')) {
-                        abrirChat(dv.id);
+                snap.docChanges().forEach(change => {
+                    const dataViaje = change.doc.data();
+                    const docId = change.doc.id;
+                    
+                    if (change.type === "added" || change.type === "modified") {
+                        if(dataViaje.estado === 'negociando' && dataViaje.ofertaDe === 'driver') {
+                            abrirNegociacionCliente(docId, dataViaje);
+                        }
+                        if(dataViaje.estado === 'rechazado') {
+                            cerrarModal();
+                        }
+                        if(dataViaje.estado === 'aceptado' && !document.getElementById('chat-active')) {
+                            abrirChat(docId);
+                        }
                     }
                 });
             });
-        } else {
+        } else if (miRol === 'driver') {
             document.getElementById('driver-view').classList.add('active-section');
             mostrarContabilidad();
             escucharViajesDriver();
             
             onSnapshot(query(collection(db, "viajes"), where("driverId", "==", miUid)), (snap) => {
-                snap.forEach(dv => {
-                    if(dv.data().estado === 'rechazado') {
-                        cerrarModal();
-                    }
-                    if(dv.data().estado === 'aceptado' && !document.getElementById('chat-active')) {
-                        abrirChat(dv.id);
+                snap.docChanges().forEach(change => {
+                    const dataViaje = change.doc.data();
+                    const docId = change.doc.id;
+
+                    if (change.type === "added" || change.type === "modified") {
+                        if(dataViaje.estado === 'rechazado') {
+                            cerrarModal();
+                        }
+                        if(dataViaje.estado === 'aceptado' && !document.getElementById('chat-active')) {
+                            abrirChat(docId);
+                        }
                     }
                 });
             });
@@ -621,7 +742,6 @@
         try {
             const res = await fetch('https://restcountries.com/v3.1/all?fields=idd,cca2');
             const data = await res.json();
-            // Ordenar alfabéticamente por código de país
             data.sort((a,b) => a.cca2.localeCompare(b.cca2));
             data.forEach(c => {
                 const code = c.idd.root + (c.idd.suffixes ? c.idd.suffixes[0] : "");
@@ -630,7 +750,7 @@
         } catch(e) { sel.add(new Option("+503", "+503")); }
     }
 
-    // --- ASIGNACIÓN DE EVENTOS (Buenas prácticas para Type="module") ---
+    // --- ASIGNACIÓN DE EVENTOS ---
     document.getElementById('btn-auth-main').onclick = window.ejecutarAuth;
     document.getElementById('btn-switch-auth').onclick = window.switchAuth;
     document.getElementById('btn-logout').onclick = window.cerrarSesion;
@@ -644,7 +764,6 @@
     document.getElementById('origin').oninput = function() { window.buscarDireccion(this, 'sug-origin'); };
     document.getElementById('destination').oninput = function() { window.buscarDireccion(this, 'sug-dest'); };
 
-    // Inicialización de países
     cargarPaises();
 </script>
 </body>
