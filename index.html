@@ -58,8 +58,8 @@
                     <option value="driver">Quiero ser Conductor</option>
                 </select>
             </div>
-            <button class="btn-action" onclick="ejecutarAuth()" id="btn-auth-main">INGRESAR</button>
-            <p onclick="switchAuth()" style="text-align:center; cursor:pointer; color:#666;">¿No tienes cuenta? Regístrate</p>
+            <button class="btn-action" id="btn-auth-main">INGRESAR</button>
+            <p id="btn-switch-auth" style="text-align:center; cursor:pointer; color:#666;">¿No tienes cuenta? Regístrate</p>
         </div>
     </div>
 
@@ -67,10 +67,10 @@
     <div id="cliente-view" class="section">
         <div id="map"></div>
         <div class="card">
-            <button onclick="usarGPS()" style="background:#3498db; margin-bottom:10px;" class="btn-action">📍 USAR MI UBICACIÓN ACTUAL</button>
-            <input id="origin" placeholder="📍 Origen (Dirección o Coordenadas)" oninput="buscarDireccion(this, 'sug-origin')">
+            <button id="btn-gps" style="background:#3498db; margin-bottom:10px;" class="btn-action">📍 USAR MI UBICACIÓN ACTUAL</button>
+            <input id="origin" placeholder="📍 Origen (Dirección o Coordenadas)">
             <div id="sug-origin" class="suggestions"></div>
-            <input id="destination" placeholder="🏁 Destino (Dirección o Coordenadas)" oninput="buscarDireccion(this, 'sug-dest')">
+            <input id="destination" placeholder="🏁 Destino (Dirección o Coordenadas)">
             <div id="sug-dest" class="suggestions"></div>
 
             <div class="grid-inputs">
@@ -86,9 +86,9 @@
             <div id="precio-area" style="display:none; text-align:center; border-top: 1px solid #eee; margin-top:10px; padding-top:10px;">
                 <p>Distancia: <b id="distanciaText">0 km</b> | Sugerido App: <b id="priceMaps">$0.00</b></p>
                 <input type="number" id="oferta-cliente" placeholder="Tu oferta $" style="font-size:18px; text-align:center;">
-                <button class="btn-action" onclick="publicarViaje()">ENVIAR OFERTA AL CONDUCTOR</button>
+                <button class="btn-action" id="btn-publicar-viaje">ENVIAR OFERTA AL CONDUCTOR</button>
             </div>
-            <button id="btn-calc" class="btn-action" style="background:#444;" onclick="calcularRutaOSRM()">CALCULAR RUTA Y PRECIO</button>
+            <button id="btn-calc" class="btn-action" style="background:#444;">CALCULANDO RUTA...</button>
         </div>
     </div>
 
@@ -115,7 +115,7 @@
         <div class="modal-content" id="modal-content-body"></div>
     </div>
 
-    <button id="btn-logout" class="btn-action" style="display:none; background:var(--danger); margin-top:20px;" onclick="cerrarSesion()">CERRAR SESIÓN</button>
+    <button id="btn-logout" class="btn-action" style="display:none; background:var(--danger); margin-top:20px;">CERRAR SESIÓN</button>
 </div>
 
 <script type="module">
@@ -162,9 +162,13 @@
     };
 
     async function reverseGeocode(latlng, inputId) {
-        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latlng.lat}&lon=${latlng.lng}`);
-        const data = await res.json();
-        document.getElementById(inputId).value = data.display_name || `${latlng.lat}, ${latlng.lng}`;
+        try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latlng.lat}&lon=${latlng.lng}`);
+            const data = await res.json();
+            document.getElementById(inputId).value = data.display_name || `${latlng.lat}, ${latlng.lng}`;
+        } catch(e) {
+            document.getElementById(inputId).value = `${latlng.lat}, ${latlng.lng}`;
+        }
     }
 
     window.usarGPS = () => {
@@ -184,19 +188,23 @@
         if(val.includes(',') && val.split(',').length === 2) {
             const p = val.split(',');
             const c = [parseFloat(p[0]), parseFloat(p[1])];
-            if(input.id === 'origin') { coordsOrigen = c; markerOrigen.setLatLng(c); }
-            else { coordsDestino = c; markerDestino.setLatLng(c); }
-            return;
+            if(!isNaN(c[0]) && !isNaN(c[1])) {
+                if(input.id === 'origin') { coordsOrigen = c; markerOrigen.setLatLng(c); }
+                else { coordsDestino = c; markerDestino.setLatLng(c); }
+                return;
+            }
         }
         if (val.length < 4) return;
-        const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(val)}&limit=5`);
-        const data = await res.json();
-        let h = "";
-        data.features.forEach(f => {
-            const lbl = `${f.properties.name || ''} ${f.properties.city || ''}`;
-            h += `<div class="suggestion-item" onclick="seleccionarPos('${input.id}','${lbl}',${f.geometry.coordinates[1]},${f.geometry.coordinates[0]},'${targetId}')">${lbl}</div>`;
-        });
-        document.getElementById(targetId).innerHTML = h;
+        try {
+            const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(val)}&limit=5`);
+            const data = await res.json();
+            let h = "";
+            data.features.forEach(f => {
+                const lbl = `${f.properties.name || ''} ${f.properties.city || ''}`.trim();
+                h += `<div class="suggestion-item" onclick="seleccionarPos('${input.id}','${lbl.replace(/'/g, "\\'")}',${f.geometry.coordinates[1]},${f.geometry.coordinates[0]},'${targetId}')">${lbl}</div>`;
+            });
+            document.getElementById(targetId).innerHTML = h;
+        } catch(e) { console.error(e); }
     };
 
     window.seleccionarPos = (inputId, lbl, lat, lon, targetId) => {
@@ -211,27 +219,29 @@
     // --- LÓGICA DE TARIFAS ---
     window.calcularRutaOSRM = async () => {
         if(!coordsOrigen || !coordsDestino) return alert("Selecciona origen y destino");
-        const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${coordsOrigen[1]},${coordsOrigen[0]};${coordsDestino[1]},${coordsDestino[0]}?overview=full&geometries=geojson`);
-        const data = await res.json();
-        if (data.code === 'Ok') {
-            const r = data.routes[0];
-            const km = r.distance / 1000;
-            
-            let precio = 0;
-            if(km <= 1) precio = 1;
-            else if(km <= 2) precio = 2;
-            else if(km <= 3) precio = 3;
-            else precio = 3 + (km - 3) * 0.30;
+        try {
+            const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${coordsOrigen[1]},${coordsOrigen[0]};${coordsDestino[1]},${coordsDestino[0]}?overview=full&geometries=geojson`);
+            const data = await res.json();
+            if (data.code === 'Ok') {
+                const r = data.routes[0];
+                const km = r.distance / 1000;
+                
+                let precio = 0;
+                if(km <= 1) precio = 1;
+                else if(km <= 2) precio = 2;
+                else if(km <= 3) precio = 3;
+                else precio = 3 + (km - 3) * 0.30;
 
-            if (polylineRuta) lMap.removeLayer(polylineRuta);
-            polylineRuta = L.geoJSON(r.geometry, {style:{color:'#2ecc71', weight:5}}).addTo(lMap);
-            lMap.fitBounds(polylineRuta.getBounds());
+                if (polylineRuta) lMap.removeLayer(polylineRuta);
+                polylineRuta = L.geoJSON(r.geometry, {style:{color:'#2ecc71', weight:5}}).addTo(lMap);
+                lMap.fitBounds(polylineRuta.getBounds());
 
-            document.getElementById("distanciaText").innerText = km.toFixed(2) + " km";
-            document.getElementById("priceMaps").innerText = "$" + precio.toFixed(2);
-            document.getElementById("oferta-cliente").value = precio.toFixed(2);
-            document.getElementById("precio-area").style.display = 'block';
-        }
+                document.getElementById("distanciaText").innerText = km.toFixed(2) + " km";
+                document.getElementById("priceMaps").innerText = "$" + precio.toFixed(2);
+                document.getElementById("oferta-cliente").value = precio.toFixed(2);
+                document.getElementById("precio-area").style.display = 'block';
+            }
+        } catch(e) { alert("Error al calcular ruta"); }
     };
 
     // --- GESTIÓN DE VIAJES Y NEGOCIACIÓN ---
@@ -249,7 +259,7 @@
             bebes: document.getElementById("p-bebes").value,
             mascotas: document.getElementById("p-mascotas").value,
             carga: document.getElementById("p-carga").value,
-            notas: document.getElementById("notasText").value,
+            notas: document.getElementById("p-notes").value, // Corregido: ID original apuntaba a un elemento inexistente 'notasText'
             estado: "buscando",
             timestamp: serverTimestamp()
         };
@@ -265,13 +275,12 @@
             snap.forEach(docSnap => {
                 const v = docSnap.data();
                 const vid = docSnap.id;
-                // El conductor ve viajes buscando, o en negociación si él es el postor activo
                 if(v.estado === "buscando" || (v.estado === "negociando" && v.driverId === miUid)) {
                     const card = document.createElement("div");
                     card.className = "card";
                     card.innerHTML = `
-                        <p><b>De:</b> ${v.origen.substring(0,40)}...</p>
-                        <p><b>A:</b> ${v.destino.substring(0,40)}...</p>
+                        <p><b>De:</b> ${v.origen ? v.origen.substring(0,40) : ''}...</p>
+                        <p><b>A:</b> ${v.destino ? v.destino.substring(0,40) : ''}...</p>
                         <p><b>Precio App:</b> ${v.precioApp} | <b>Oferta Cliente:</b> $${v.ofertaActual}</p>
                         <button class="btn-action" onclick="abrirNegociacionDriver('${vid}')">VER DETALLES / RESPONDER</button>
                     `;
@@ -281,7 +290,6 @@
         });
     }
 
-    // Modal para el Conductor (Aceptar, Contraoferta o Rechazar)
     window.abrirNegociacionDriver = async (id) => {
         const docRef = doc(db, "viajes", id);
         const v = (await getDoc(docRef)).data();
@@ -328,7 +336,6 @@
         if(monto && !isNaN(monto)) responderDriver(id, 'contraoferta', parseFloat(monto));
     };
 
-    // Modal para el Cliente cuando recibe contraoferta del Conductor
     window.abrirNegociacionCliente = async (id, v) => {
         const modal = document.getElementById("modal-negociacion");
         const body = document.getElementById("modal-content-body");
@@ -360,7 +367,7 @@
         }
     };
 
-    // --- LÓGICA DE CHAT EN TIEMPO REAL ---
+    // --- CHAT EN TIEMPO REAL ---
     window.abrirChat = (id) => {
         cerrarModal();
 
@@ -384,12 +391,13 @@
             <div id="chat-box"></div>
             <input id="chat-input" placeholder="Escribe un mensaje...">
             <button class="btn-action" id="btn-send-msg">ENVIAR</button>
-            <button class="btn-action" style="background:red;margin-top:10px;" onclick="finalizarViaje('${id}')">FINALIZAR VIAJE</button>
+            <button class="btn-action" style="background:red;margin-top:10px;" id="btn-finalizar-viaje">FINALIZAR VIAJE</button>
         `;
 
         document.querySelector(".container").appendChild(chatUI);
 
         document.getElementById('btn-send-msg').onclick = () => window.enviarMensaje(id);
+        document.getElementById('btn-finalizar-viaje').onclick = () => window.finalizarViaje(id);
 
         const mensajesRef = query(
             collection(db, "viajes", id, "mensajes"),
@@ -444,9 +452,7 @@
                 timestamp: serverTimestamp()
             });
             input.value = "";
-        } catch(error) {
-            console.error("Error enviando mensaje:", error);
-        }
+        } catch(error) { console.error("Error enviando mensaje:", error); }
     };
 
     window.finalizarViaje = async (id) => {
@@ -461,14 +467,14 @@
         location.reload();
     };
 
-    // --- ADMIN Y CONTABILIDAD ---
+    // --- CONTABILIDAD Y PANEL ADMIN ---
     async function mostrarContabilidad() {
         const hoy = new Date();
         const dias = [];
         for(let i=0; i<5; i++) {
             let d = new Date();
             d.setDate(hoy.getDate() - i);
-            d.push(d.toISOString().split('T')[0]);
+            dias.push(d.toISOString().split('T')[0]); // Corregido: 'd.push' generaba error de ejecución sobre objeto Date. Cambiado a 'dias.push'.
         }
 
         const q = query(collection(db, "viajes"), where("driverId", "==", miUid), where("estado", "==", "finalizado"));
@@ -501,9 +507,10 @@
             div.style.padding = "10px";
             div.innerHTML = `
                 <p>${u.nombre} (${u.rol}) - ${u.activo !== false ? '✅ Activo' : '❌ Inactivo'}</p>
-                <button onclick="toggleUser('${uDoc.id}', ${u.activo !== false})">Alternar Estado</button>
+                <button id="btn-toggle-${uDoc.id}">Alternar Estado</button>
             `;
             container.appendChild(div);
+            document.getElementById(`btn-toggle-${uDoc.id}`).onclick = () => window.toggleUser(uDoc.id, u.activo !== false);
         });
     }
 
@@ -552,56 +559,60 @@
             }
             const q = query(collection(db, "usuarios"), where("uid", "==", u.uid));
             const s = await getDocs(q);
-            s.forEach(d => {
-                const user = d.data();
-                if(user.activo === false) { alert("Usuario desactivado"); cerrarSesion(); return; }
-                miRol = user.rol; miNombre = user.nombre;
-                document.getElementById('auth-container').style.display = 'none';
-                document.getElementById('btn-logout').style.display = 'block';
-                
-                if(miRol === 'cliente') {
-                    document.getElementById('cliente-view').classList.add('active-section');
-                    initLeaflet();
-                    
-                    // Listener en tiempo real para el cliente
-                    onSnapshot(query(collection(db, "viajes"), where("clienteId", "==", miUid)), (snap) => {
-                        snap.forEach(dv => {
-                            const dataViaje = dv.data();
-                            
-                            // 1. Si el driver mandó contraoferta flotante
-                            if(dataViaje.estado === 'negociando' && dataViaje.ofertaDe === 'driver') {
-                                abrirNegociacionCliente(dv.id, dataViaje);
-                            }
-                            // 2. Si el cliente rechazó la oferta o el viaje se cancela, aseguramos cerrar modales
-                            if(dataViaje.estado === 'rechazado') {
-                                cerrarModal();
-                            }
-                            // 3. El chat ÚNICAMENTE se abre si el viaje fue aceptado por completo
-                            if(dataViaje.estado === 'aceptado' && !document.getElementById('chat-active')) {
-                                abrirChat(dv.id);
-                            }
-                        });
-                    });
-                } else {
-                    document.getElementById('driver-view').classList.add('active-section');
-                    mostrarContabilidad();
-                    escucharViajesDriver();
-                    
-                    // Listener en tiempo real para el conductor (por si el cliente cancela o rechaza mientras el modal está abierto)
-                    onSnapshot(query(collection(db, "viajes"), where("driverId", "==", miUid)), (snap) => {
-                        snap.forEach(dv => {
-                            if(dv.data().estado === 'rechazado') {
-                                cerrarModal();
-                            }
-                            if(dv.data().estado === 'aceptado' && !document.getElementById('chat-active')) {
-                                abrirChat(dv.id);
-                            }
-                        });
-                    });
-                }
-            });
+            
+            if(s.empty) {
+                // Si el usuario se acaba de registrar, damos un pequeño margen para que el documento se guarde en Firestore
+                setTimeout(async () => {
+                    const retrySnap = await getDocs(q);
+                    if(!retrySnap.empty) procesarLoginUsuario(retrySnap.docs[0].data());
+                }, 1000);
+            } else {
+                procesarLoginUsuario(s.docs[0].data());
+            }
         }
     });
+
+    function procesarLoginUsuario(user) {
+        if(user.activo === false) { alert("Usuario desactivado"); cerrarSesion(); return; }
+        miRol = user.rol; miNombre = user.nombre;
+        document.getElementById('auth-container').style.display = 'none';
+        document.getElementById('btn-logout').style.display = 'block';
+        
+        if(miRol === 'cliente') {
+            document.getElementById('cliente-view').classList.add('active-section');
+            initLeaflet();
+            
+            onSnapshot(query(collection(db, "viajes"), where("clienteId", "==", miUid)), (snap) => {
+                snap.forEach(dv => {
+                    const dataViaje = dv.data();
+                    if(dataViaje.estado === 'negociando' && dataViaje.ofertaDe === 'driver') {
+                        abrirNegociacionCliente(dv.id, dataViaje);
+                    }
+                    if(dataViaje.estado === 'rechazado') {
+                        cerrarModal();
+                    }
+                    if(dataViaje.estado === 'aceptado' && !document.getElementById('chat-active')) {
+                        abrirChat(dv.id);
+                    }
+                });
+            });
+        } else {
+            document.getElementById('driver-view').classList.add('active-section');
+            mostrarContabilidad();
+            escucharViajesDriver();
+            
+            onSnapshot(query(collection(db, "viajes"), where("driverId", "==", miUid)), (snap) => {
+                snap.forEach(dv => {
+                    if(dv.data().estado === 'rechazado') {
+                        cerrarModal();
+                    }
+                    if(dv.data().estado === 'aceptado' && !document.getElementById('chat-active')) {
+                        abrirChat(dv.id);
+                    }
+                });
+            });
+        }
+    }
 
     window.cerrarSesion = () => signOut(auth).then(() => location.reload());
 
@@ -610,12 +621,30 @@
         try {
             const res = await fetch('https://restcountries.com/v3.1/all?fields=idd,cca2');
             const data = await res.json();
+            // Ordenar alfabéticamente por código de país
+            data.sort((a,b) => a.cca2.localeCompare(b.cca2));
             data.forEach(c => {
                 const code = c.idd.root + (c.idd.suffixes ? c.idd.suffixes[0] : "");
                 if(code) sel.add(new Option(`${c.cca2} (${code})`, code));
             });
         } catch(e) { sel.add(new Option("+503", "+503")); }
     }
+
+    // --- ASIGNACIÓN DE EVENTOS (Buenas prácticas para Type="module") ---
+    document.getElementById('btn-auth-main').onclick = window.ejecutarAuth;
+    document.getElementById('btn-switch-auth').onclick = window.switchAuth;
+    document.getElementById('btn-logout').onclick = window.cerrarSesion;
+    document.getElementById('btn-gps').onclick = window.usarGPS;
+    document.getElementById('btn-publicar-viaje').onclick = window.publicarViaje;
+    
+    const btnCalc = document.getElementById('btn-calc');
+    btnCalc.innerText = "CALCULAR RUTA Y PRECIO";
+    btnCalc.onclick = window.calcularRutaOSRM;
+
+    document.getElementById('origin').oninput = function() { window.buscarDireccion(this, 'sug-origin'); };
+    document.getElementById('destination').oninput = function() { window.buscarDireccion(this, 'sug-dest'); };
+
+    // Inicialización de países
     cargarPaises();
 </script>
 </body>
