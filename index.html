@@ -14,7 +14,7 @@
         .container { max-width: 500px; margin: auto; padding: 15px; }
         header { text-align: center; padding: 20px; background: rgba(0,0,0,0.3); border-radius: 0 0 25px 25px; border-bottom: 2px solid var(--primary); margin-bottom: 20px; }
         .card { background: var(--white); color: #333; border-radius: 20px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); margin-bottom: 15px; position: relative; }
-        input, select { width: 100%; padding: 12px; margin: 5px 0; border: 1px solid #ddd; border-radius: 10px; font-size: 14px; box-sizing: border-box; }
+        input, select, textarea { width: 100%; padding: 12px; margin: 5px 0; border: 1px solid #ddd; border-radius: 10px; font-size: 14px; box-sizing: border-box; }
         .btn-action { width: 100%; padding: 16px; border: none; border-radius: 12px; background: var(--primary); color: white; font-weight: bold; cursor: pointer; transition: 0.3s; margin-top: 5px; }
         
         #map { width: 100%; height: 300px; border-radius: 20px; margin-bottom: 15px; border: 2px solid var(--primary); z-index: 1; }
@@ -41,6 +41,7 @@
 </header>
 
 <div class="container">
+    <!-- AUTENTICACIÓN -->
     <div id="auth-container" class="section active-section">
         <div class="card">
             <h3 style="text-align:center; margin-top:0;">Acceso</h3>
@@ -62,6 +63,7 @@
         </div>
     </div>
 
+    <!-- VISTA CLIENTE -->
     <div id="cliente-view" class="section">
         <div id="map"></div>
         <div class="card">
@@ -76,11 +78,13 @@
                 <div><label><small>Bebés</small></label><input type="number" id="p-bebes" value="0"></div>
                 <div><label><small>Mascotas</small></label><input type="number" id="p-mascotas" value="0"></div>
                 <div><label><small>Carga (kg)</small></label><input type="number" id="p-carga" value="0"></div>
-                <textarea id="p-notas" placeholder="Notas extras (ej. Maletas grandes, aire acondicionado...)"></textarea>
+                <div style="grid-column: span 2;">
+                    <textarea id="p-notes" placeholder="Notas extras (ej. Maletas grandes, aire acondicionado...)"></textarea>
+                </div>
             </div>
 
             <div id="precio-area" style="display:none; text-align:center; border-top: 1px solid #eee; margin-top:10px; padding-top:10px;">
-                <p>Distancia: <b id="distanciaText">0 km</b> | Sugerido: <b id="priceMaps">$0.00</b></p>
+                <p>Distancia: <b id="distanciaText">0 km</b> | Sugerido App: <b id="priceMaps">$0.00</b></p>
                 <input type="number" id="oferta-cliente" placeholder="Tu oferta $" style="font-size:18px; text-align:center;">
                 <button class="btn-action" onclick="publicarViaje()">ENVIAR OFERTA AL CONDUCTOR</button>
             </div>
@@ -88,6 +92,7 @@
         </div>
     </div>
 
+    <!-- VISTA CONDUCTOR -->
     <div id="driver-view" class="section">
         <div class="card">
             <h4 style="margin:0">Ganancias (Últimos 5 días)</h4>
@@ -97,6 +102,7 @@
         <div id="lista-viajes-global"></div>
     </div>
 
+    <!-- PANEL ADMIN -->
     <div id="admin-view" class="section">
         <div class="card">
             <h3>Panel de Administración</h3>
@@ -104,6 +110,7 @@
         </div>
     </div>
 
+    <!-- VENTANA FLOTANTE (NEGOCIACIÓN) -->
     <div id="modal-negociacion" class="modal">
         <div class="modal-content" id="modal-content-body"></div>
     </div>
@@ -246,7 +253,7 @@
             timestamp: serverTimestamp()
         };
         await addDoc(collection(db, "viajes"), viaje);
-        alert("Oferta enviada. Esperando conductor...");
+        alert("Solicitud enviada con tu oferta personal. Esperando conductor...");
     };
 
     function escucharViajesDriver() {
@@ -257,14 +264,15 @@
             snap.forEach(docSnap => {
                 const v = docSnap.data();
                 const vid = docSnap.id;
+                // El conductor ve viajes buscando, o en negociación si él es el postor activo
                 if(v.estado === "buscando" || (v.estado === "negociando" && v.driverId === miUid)) {
                     const card = document.createElement("div");
                     card.className = "card";
                     card.innerHTML = `
                         <p><b>De:</b> ${v.origen.substring(0,40)}...</p>
                         <p><b>A:</b> ${v.destino.substring(0,40)}...</p>
-                        <p><b>Oferta:</b> $${v.ofertaActual}</p>
-                        <button class="btn-action" onclick="abrirNegociacion('${vid}')">VER DETALLES / ACEPTAR</button>
+                        <p><b>Precio App:</b> ${v.precioApp} | <b>Oferta Cliente:</b> $${v.ofertaActual}</p>
+                        <button class="btn-action" onclick="abrirNegociacionDriver('${vid}')">VER DETALLES / RESPONDER</button>
                     `;
                     container.appendChild(card);
                 }
@@ -272,7 +280,8 @@
         });
     }
 
-    window.abrirNegociacion = async (id) => {
+    // Modal para el Conductor (Aceptar, Contraoferta o Rechazar)
+    window.abrirNegociacionDriver = async (id) => {
         const docRef = doc(db, "viajes", id);
         const v = (await getDoc(docRef)).data();
         const modal = document.getElementById("modal-negociacion");
@@ -280,38 +289,77 @@
 
         body.innerHTML = `
             <h3>Detalles del Viaje</h3>
-            <p><small><b>A:</b> ${v.origen}</small></p>
-            <p><small><b>B:</b> ${v.destino}</small></p>
+            <p><small><b>Origen:</b> ${v.origen}</small></p>
+            <p><small><b>Destino:</b> ${v.destino}</small></p>
             <p><b>Distancia:</b> ${v.km} | <b>Precio App:</b> ${v.precioApp}</p>
-            <p><b>Carga:</b> ${v.carga}kg | <b>Mascotas:</b> ${v.mascotas}</p>
+            <p><b>Oferta del Cliente:</b> $${v.ofertaActual}</p>
             <hr>
-            <h4>Oferta actual: $${v.ofertaActual}</h4>
-            <div style="display:flex; gap:5px;">
-                <button class="btn-action" onclick="responderViaje('${id}', 'aceptar')">ACEPTAR</button>
-                <button class="btn-action" style="background:#444" onclick="contraOferta('${id}')">CONTRAOFERTA</button>
-                <button class="btn-action" style="background:red" onclick="cerrarModal()">RECHAZAR</button>
+            <div style="display:flex; flex-direction:column; gap:5px;">
+                <button class="btn-action" onclick="responderDriver('${id}', 'aceptar')">ACEPTAR VIAJE</button>
+                <button class="btn-action" style="background:#f1c40f; color:black;" onclick="contraofertaDriver('${id}')">ENVIAR NUEVA TARIFA</button>
+                <button class="btn-action" style="background:red" onclick="cerrarModal()">RECHAZAR / CERRAR</button>
             </div>
         `;
         modal.style.display = "flex";
     };
 
-    window.responderViaje = async (id, accion, valor = null) => {
+    window.responderDriver = async (id, accion, valor = null) => {
         const docRef = doc(db, "viajes", id);
         if(accion === 'aceptar') {
             await updateDoc(docRef, { estado: 'aceptado', driverId: miUid, driverNombre: miNombre });
+            cerrarModal();
             abrirChat(id);
         } else if (accion === 'contraoferta') {
-            await updateDoc(docRef, { ofertaActual: valor, ofertaDe: 'driver', driverId: miUid, estado: 'negociando' });
+            await updateDoc(docRef, { 
+                ofertaActual: valor, 
+                ofertaDe: 'driver', 
+                driverId: miUid, 
+                driverNombre: miNombre, 
+                estado: 'negociando' 
+            });
             cerrarModal();
+            alert("Contraoferta enviada al cliente. Esperando confirmación...");
         }
     };
 
-    window.contraOferta = (id) => {
-        const monto = prompt("Ingrese su nueva propuesta de costo:");
-        if(monto) responderViaje(id, 'contraoferta', parseFloat(monto));
+    window.contraofertaDriver = (id) => {
+        const monto = prompt("Ingresa tu propuesta de tarifa para el cliente:");
+        if(monto && !isNaN(monto)) responderDriver(id, 'contraoferta', parseFloat(monto));
     };
 
-    // --- CORRECCIÓN EN CHAT ---
+    // Modal para el Cliente cuando recibe contraoferta del Conductor
+    window.abrirNegociacionCliente = async (id, v) => {
+        const modal = document.getElementById("modal-negociacion");
+        const body = document.getElementById("modal-content-body");
+
+        body.innerHTML = `
+            <h3>¡Nueva Oferta de Conductor!</h3>
+            <p>El conductor <b>${v.driverNombre}</b> propone una tarifa diferente para tu viaje.</p>
+            <p><b>Precio sugerido App:</b> ${v.precioApp}</p>
+            <p style="font-size:18px; text-align:center; color:var(--primary)"><b>Nueva Oferta: $${v.ofertaActual}</b></p>
+            <hr>
+            <div style="display:flex; gap:5px;">
+                <button class="btn-action" onclick="responderCliente('${id}', 'aceptar')">ACEPTAR</button>
+                <button class="btn-action" style="background:red" onclick="responderCliente('${id}', 'rechazar')">RECHAZAR</button>
+            </div>
+        `;
+        modal.style.display = "flex";
+    };
+
+    window.responderCliente = async (id, accion) => {
+        const docRef = doc(db, "viajes", id);
+        if(accion === 'aceptar') {
+            await updateDoc(docRef, { estado: 'aceptado' });
+            cerrarModal();
+            abrirChat(id);
+        } else if(accion === 'rechazar') {
+            await updateDoc(docRef, { estado: 'rechazado' });
+            cerrarModal();
+            alert("Has rechazado la oferta. Las ventanas de negociación se han cerrado.");
+        }
+    };
+
+    // --- LÓGICA DE CHAT EN TIEMPO REAL ---
     window.abrirChat = (id) => {
         cerrarModal();
 
@@ -330,7 +378,7 @@
 
         chatUI.innerHTML = `
             <div style="background:orange;padding:10px;border-radius:10px;margin-bottom:10px;font-size:12px;color:black;font-weight:bold;text-align:center;">
-                ⚠️ NO CERRAR EL CHAT HASTA FINALIZAR EL VIAJE
+                ⚠️ VIAJE EN CURSO - NO CERRAR ESTE CHAT
             </div>
             <div id="chat-box"></div>
             <input id="chat-input" placeholder="Escribe un mensaje...">
@@ -340,7 +388,6 @@
 
         document.querySelector(".container").appendChild(chatUI);
 
-        // Listener dinámico para el botón de enviar
         document.getElementById('btn-send-msg').onclick = () => window.enviarMensaje(id);
 
         const mensajesRef = query(
@@ -398,7 +445,6 @@
             input.value = "";
         } catch(error) {
             console.error("Error enviando mensaje:", error);
-            alert("No se pudo enviar el mensaje");
         }
     };
 
@@ -410,7 +456,7 @@
             fechaFinalizado: new Date().toISOString().split('T')[0],
             precioFinal: v.ofertaActual 
         });
-        alert("Viaje finalizado.");
+        alert("Viaje finalizado exitosamente.");
         location.reload();
     };
 
@@ -421,7 +467,7 @@
         for(let i=0; i<5; i++) {
             let d = new Date();
             d.setDate(hoy.getDate() - i);
-            dias.push(d.toISOString().split('T')[0]);
+            d.push(d.toISOString().split('T')[0]);
         }
 
         const q = query(collection(db, "viajes"), where("driverId", "==", miUid), where("estado", "==", "finalizado"));
@@ -467,7 +513,7 @@
 
     window.cerrarModal = () => document.getElementById("modal-negociacion").style.display = "none";
 
-    // --- AUTH ---
+    // --- AUTENTICACIÓN ---
     window.switchAuth = () => {
         isReg = !isReg;
         document.getElementById('reg-fields').style.display = isReg ? 'block' : 'none';
@@ -511,19 +557,46 @@
                 miRol = user.rol; miNombre = user.nombre;
                 document.getElementById('auth-container').style.display = 'none';
                 document.getElementById('btn-logout').style.display = 'block';
+                
                 if(miRol === 'cliente') {
                     document.getElementById('cliente-view').classList.add('active-section');
                     initLeaflet();
+                    
+                    // Listener en tiempo real para el cliente
                     onSnapshot(query(collection(db, "viajes"), where("clienteId", "==", miUid)), (snap) => {
                         snap.forEach(dv => {
-                            if(dv.data().estado === 'negociando' && dv.data().ofertaDe === 'driver') abrirNegociacion(dv.id);
-                            if(dv.data().estado === 'aceptado' && !document.getElementById('chat-active')) abrirChat(dv.id);
+                            const dataViaje = dv.data();
+                            
+                            // 1. Si el driver mandó contraoferta flotante
+                            if(dataViaje.estado === 'negociando' && dataViaje.ofertaDe === 'driver') {
+                                abrirNegociacionCliente(dv.id, dataViaje);
+                            }
+                            // 2. Si el cliente rechazó la oferta o el viaje se cancela, aseguramos cerrar modales
+                            if(dataViaje.estado === 'rechazado') {
+                                cerrarModal();
+                            }
+                            // 3. El chat ÚNICAMENTE se abre si el viaje fue aceptado por completo
+                            if(dataViaje.estado === 'aceptado' && !document.getElementById('chat-active')) {
+                                abrirChat(dv.id);
+                            }
                         });
                     });
                 } else {
                     document.getElementById('driver-view').classList.add('active-section');
                     mostrarContabilidad();
                     escucharViajesDriver();
+                    
+                    // Listener en tiempo real para el conductor (por si el cliente cancela o rechaza mientras el modal está abierto)
+                    onSnapshot(query(collection(db, "viajes"), where("driverId", "==", miUid)), (snap) => {
+                        snap.forEach(dv => {
+                            if(dv.data().estado === 'rechazado') {
+                                cerrarModal();
+                            }
+                            if(dv.data().estado === 'aceptado' && !document.getElementById('chat-active')) {
+                                abrirChat(dv.id);
+                            }
+                        });
+                    });
                 }
             });
         }
