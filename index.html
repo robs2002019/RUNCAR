@@ -22,7 +22,7 @@
         .active-section { display: block; }
 
         .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; display: none; align-items: center; justify-content: center; }
-        .modal-content { background: white; color: #333; width: 90%; max-width: 400px; padding: 20px; border-radius: 20px; }
+        .modal-content { background: white; color: #333; width: 90%; max-width: 400px; padding: 20px; border-radius: 20px; position: relative;}
 
         .grid-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
         .suggestions { background: white; color: black; position: absolute; width: 100%; z-index: 1000; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); max-height: 150px; overflow-y: auto; }
@@ -33,7 +33,7 @@
         
         #chat-box { height: 250px; overflow-y: auto; background: var(--chat-bg); padding: 10px; border-radius: 10px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 10px; }
         .file-label { font-size: 12px; display: block; margin-top: 6px; color: #555; font-weight: bold; }
-        .admin-box { background: #f9f9f9; padding: 10px; border-radius: 10px; margin-bottom: 10px; border-left: 4px solid var(--primary); }
+        .countdown-timer { background: var(--danger); color: white; padding: 5px; text-align: center; border-radius: 8px; font-weight: bold; margin-bottom: 10px; }
     </style>
 </head>
 <body>
@@ -130,17 +130,6 @@
         <div id="lista-viajes-global"></div>
     </div>
 
-    <!-- PANEL ADMIN -->
-    <div id="admin-view" class="section">
-        <div class="card">
-            <h3>Panel de Administración</h3>
-            <h4 style="border-bottom: 2px solid var(--primary); padding-bottom: 5px;">Clientes Registrados</h4>
-            <div id="admin-clientes-list"></div>
-            <h4 style="border-bottom: 2px solid var(--accent); padding-bottom: 5px; margin-top:25px;">Conductores Disponibles</h4>
-            <div id="admin-drivers-list"></div>
-        </div>
-    </div>
-
     <!-- VENTANA FLOTANTE (NEGOCIACIÓN) -->
     <div id="modal-negociacion" class="modal">
         <div class="modal-content" id="modal-content-body"></div>
@@ -171,8 +160,8 @@
     let coordsOrigen = null, coordsDestino = null;
     let miRol = "", miUid = "", miNombre = "", miFoto = "", isReg = false;
     let chatEscuchandoActivo = false;
+    let countdownInterval = null;
 
-    // --- CONTROL DE CAMPOS VISIBLES EN REGISTRO ---
     document.getElementById('reg-rol').addEventListener('change', function() {
         document.getElementById('driver-register-fields').style.display = this.value === 'driver' ? 'block' : 'none';
     });
@@ -184,6 +173,42 @@
         reader.onload = () => resolve(reader.result);
         reader.onerror = error => reject(error);
     });
+
+    // --- CONEXIÓN / MONITOREO SESIÓN ---
+    onAuthStateChanged(auth, async (user) => {
+        if (user) {
+            miUid = user.uid;
+            const userDoc = await getDoc(doc(db, "usuarios", miUid));
+            if(userDoc.exists()) {
+                const data = userDoc.data();
+                miRol = data.rol;
+                miNombre = data.nombre;
+                miFoto = data.fotoPerfil;
+                
+                document.getElementById('auth-container').classList.remove('active-section');
+                document.getElementById('btn-logout').style.display = 'block';
+                
+                if(miRol === 'cliente') {
+                    document.getElementById('cliente-view').classList.add('active-section');
+                    window.initLeaflet();
+                    escucharViajeCliente();
+                } else if(miRol === 'driver') {
+                    document.getElementById('driver-view').classList.add('active-section');
+                    mostrarContabilidad();
+                    escucharViajesDriver();
+                }
+            }
+        } else {
+            miUid = ""; miRol = "";
+            document.getElementById('auth-container').classList.add('active-section');
+            document.getElementById('cliente-view').classList.remove('active-section');
+            document.getElementById('driver-view').classList.remove('active-section');
+            document.getElementById('btn-logout').style.display = 'none';
+            if(document.getElementById('chat-active')) document.getElementById('chat-active').remove();
+        }
+    });
+
+    window.cerrarSesion = () => signOut(auth);
 
     // --- MAPA ---
     window.initLeaflet = () => {
@@ -261,7 +286,6 @@
         lMap.flyTo(c, 14);
     };
 
-    // --- LÓGICA DE TARIFAS ---
     window.calcularRutaOSRM = async () => {
         if(!coordsOrigen || !coordsDestino) return alert("Selecciona origen y destino");
         try {
@@ -289,6 +313,26 @@
         } catch(e) { alert("Error al calcular ruta"); }
     };
 
+    // --- TEMPORIZADOR DE 8 SEGUNDOS GLOBAL ---
+    function iniciarTemporizador(idViaje, accionTimeout) {
+        clearInterval(countdownInterval);
+        let tiempoRestante = 8;
+        const timerElement = document.getElementById("timer-countdown");
+        if(timerElement) timerElement.innerText = tiempoRestante;
+
+        countdownInterval = setInterval(async () => {
+            tiempoRestante--;
+            const timerElementUpdate = document.getElementById("timer-countdown");
+            if(timerElementUpdate) timerElementUpdate.innerText = tiempoRestante;
+
+            if(tiempoRestante <= 0) {
+                clearInterval(countdownInterval);
+                cerrarModal();
+                if(accionTimeout) await accionTimeout(idViaje);
+            }
+        }, 1000);
+    }
+
     // --- GESTIÓN DE VIAJES Y NEGOCIACIÓN ---
     window.publicarViaje = async () => {
         if (!miUid) return alert("Identificación de usuario no válida.");
@@ -309,19 +353,32 @@
             estado: "buscando",
             timestamp: serverTimestamp()
         };
-        await addDoc(collection(db, "viajes"), viaje);
-        alert("Solicitud enviada. Por favor, espera a que un conductor acepte o te envíe una nueva oferta.");
+        const docRef = await addDoc(collection(db, "viajes"), viaje);
+        abrirModalEsperaCliente(docRef.id);
     };
+
+    function abrirModalEsperaCliente(idViaje) {
+        const modal = document.getElementById("modal-negociacion");
+        const body = document.getElementById("modal-content-body");
+        body.innerHTML = `
+            <div class="countdown-timer">Tiempo para respuesta: <span id="timer-countdown">8</span>s</div>
+            <h3>Esperando Conductores...</h3>
+            <p>Tu oferta base y sugerida han sido enviadas. Tienen 8 segundos para interactuar.</p>
+        `;
+        modal.style.display = "flex";
+        
+        iniciarTemporizador(idViaje, async (id) => {
+            await updateDoc(doc(db, "viajes", id), { estado: 'cancelado' });
+            alert("No se recibió respuesta a tiempo. La solicitud se cerró.");
+        });
+    }
 
     function escucharViajeCliente() {
         const q = query(collection(db, "viajes"), where("clienteId", "==", miUid));
         onSnapshot(q, (snap) => {
             if(snap.empty) return;
-            
             let documentos = [];
-            snap.forEach(doc => {
-                documentos.push({ id: doc.id, ...doc.data() });
-            });
+            snap.forEach(doc => { documentos.push({ id: doc.id, ...doc.data() }); });
             documentos.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
             
             const v = documentos[0];
@@ -331,9 +388,14 @@
                 abrirNegociacionCliente(vId, v);
             } 
             else if(v.estado === "accepted") {
+                clearInterval(countdownInterval);
                 if(!document.getElementById('chat-active')) {
                     window.abrirChat(vId);
                 }
+            }
+            else if(v.estado === "rechazado" || v.estado === "cancelado") {
+                clearInterval(countdownInterval);
+                cerrarModal();
             }
         });
     }
@@ -346,13 +408,14 @@
             snap.forEach(docSnap => {
                 const v = docSnap.data();
                 const vid = docSnap.id;
-                if(v.estado === "buscando" || (v.estado === "negociando" && v.driverId === miUid)) {
+                
+                if(v.estado === "buscando") {
                     const card = document.createElement("div");
                     card.className = "card";
                     card.innerHTML = `
                         <p><b>De:</b> ${v.origen ? v.origen.substring(0,40) : ''}...</p>
                         <p><b>A:</b> ${v.destino ? v.destino.substring(0,40) : ''}...</p>
-                        <p><b>Precio App:</b> ${v.precioApp} | <b>Oferta Client:</b> $${v.ofertaActual}</p>
+                        <p><b>Precio App:</b> ${v.precioApp} | <b>Oferta Cliente:</b> $${v.ofertaActual}</p>
                         <button class="btn-action" onclick="abrirNegociacionDriver('${vid}')">VER DETALLES / RESPONDER</button>
                     `;
                     container.appendChild(card);
@@ -363,28 +426,57 @@
 
     window.abrirNegociacionDriver = async (id) => {
         const docRef = doc(db, "viajes", id);
-        const v = (await getDoc(docRef)).data();
+        const snapshot = await getDoc(docRef);
+        if(!snapshot.exists() || snapshot.data().estado !== "buscando") {
+            alert("El viaje ya no está disponible.");
+            return;
+        }
+        const v = snapshot.data();
         const modal = document.getElementById("modal-negociacion");
         const body = document.getElementById("modal-content-body");
 
         body.innerHTML = `
+            <div class="countdown-timer">Tiempo restante: <span id="timer-countdown">8</span>s</div>
             <h3>Detalles del Viaje</h3>
             <p><small><b>Origen:</b> ${v.origen}</small></p>
             <p><small><b>Destino:</b> ${v.destino}</small></p>
-            <p><b>Distancia:</b> ${v.km} | <b>Precio App:</b> ${v.precioApp}</p>
-            <p><b>Oferta del Cliente:</b> $${v.ofertaActual}</p>
+            <p><b>Precio App:</b> ${v.precioApp} | <b>Oferta de Cliente:</b> $${v.ofertaActual}</p>
             <hr>
             <div style="display:flex; flex-direction:column; gap:5px;">
                 <button class="btn-action" onclick="responderDriver('${id}', 'aceptar')">ACEPTAR VIAJE</button>
-                <button class="btn-action" style="background:#f1c40f; color:black;" onclick="contraofertaDriver('${id}')">ENVIAR NUEVA TARIFA</button>
-                <button class="btn-action" style="background:red" onclick="responderDriver('${id}', 'rechazar')">RECHAZAR / CERRAR</button>
+                <button class="btn-action" style="background:#f1c40f; color:black;" onclick="contraofertaDriver('${id}')">ENVIAR PROPUESTA</button>
+                <button class="btn-action" style="background:red" onclick="responderDriver('${id}', 'rechazar')">CANCELAR / RECHAZAR</button>
             </div>
         `;
         modal.style.display = "flex";
+
+        // Vinculación del listener para cerrar la ventana del driver si el viaje es cancelado externamente
+        const unsub = onSnapshot(docRef, (docSnap) => {
+            if (docSnap.exists() && (docSnap.data().estado === 'cancelado' || docSnap.data().estado === 'accepted')) {
+                clearInterval(countdownInterval);
+                cerrarModal();
+                unsub();
+            }
+        });
+
+        iniciarTemporizador(id, async (idViaje) => {
+            cerrarModal();
+            unsub();
+        });
     };
 
     window.responderDriver = async (id, accion, valor = null) => {
+        clearInterval(countdownInterval);
         const docRef = doc(db, "viajes", id);
+        
+        // Verificar transacciones concurrentes: El primero que acepta se lo lleva
+        const snapActual = await getDoc(docRef);
+        if(snapActual.data().estado === 'accepted' && accion === 'aceptar') {
+            cerrarModal();
+            alert("Otro conductor ya aceptó este viaje.");
+            return;
+        }
+
         if(accion === 'aceptar') {
             await updateDoc(docRef, { estado: 'accepted', driverId: miUid, driverNombre: miNombre });
             cerrarModal();
@@ -398,15 +490,44 @@
                 estado: 'negociando' 
             });
             cerrarModal();
-            alert("Contraoferta enviada al cliente. Esperando confirmación...");
+            abrirModalEsperaContraoferta(id);
         } else if (accion === 'rechazar') {
+            await updateDoc(docRef, { estado: 'rechazado' });
             cerrarModal();
         }
     };
 
+    function abrirModalEsperaContraoferta(idViaje) {
+        const modal = document.getElementById("modal-negociacion");
+        const body = document.getElementById("modal-content-body");
+        body.innerHTML = `
+            <div class="countdown-timer">Esperando cliente: <span id="timer-countdown">8</span>s</div>
+            <h3>Propuesta Enviada</h3>
+            <p>Esperando que el cliente acepte o rechace tu precio...</p>
+        `;
+        modal.style.display = "flex";
+
+        const unsub = onSnapshot(doc(db, "viajes", idViaje), (docSnap) => {
+            if (docSnap.exists() && docSnap.data().estado === 'rechazado') {
+                clearInterval(countdownInterval);
+                cerrarModal();
+                alert("El cliente rechazó tu propuesta.");
+                unsub();
+            }
+        });
+
+        iniciarTemporizador(idViaje, async (id) => {
+            await updateDoc(doc(db, "viajes", id), { estado: 'rechazado' });
+            cerrarModal();
+            unsub();
+        });
+    }
+
     window.contraofertaDriver = (id) => {
-        const monto = prompt("Ingresa tu propuesta de tarifa para el cliente:");
-        if(monto && !isNaN(monto)) responderDriver(id, 'contraoferta', parseFloat(monto));
+        const monto = prompt("Ingresa tu propuesta de precio para el viaje:");
+        if(monto && !isNaN(monto)) {
+            responderDriver(id, 'contraoferta', parseFloat(monto));
+        }
     };
 
     window.abrirNegociacionCliente = async (id, v) => {
@@ -414,9 +535,9 @@
         const body = document.getElementById("modal-content-body");
 
         body.innerHTML = `
-            <h3>¡Nueva Oferta de Conductor!</h3>
-            <p>El conductor <b>${v.driverNombre}</b> propone una tarifa diferente para tu viaje.</p>
-            <p><b>Precio sugerido App:</b> ${v.precioApp}</p>
+            <div class="countdown-timer">Tiempo para decidir: <span id="timer-countdown">8</span>s</div>
+            <h3>¡Nueva Propuesta de Conductor!</h3>
+            <p>El conductor <b>${v.driverNombre}</b> propone un precio diferente.</p>
             <p style="font-size:18px; text-align:center; color:var(--primary)"><b>Nueva Oferta: $${v.ofertaActual}</b></p>
             <hr>
             <div style="display:flex; gap:5px;">
@@ -425,25 +546,29 @@
             </div>
         `;
         modal.style.display = "flex";
+
+        iniciarTemporizador(id, async (idViaje) => {
+            await updateDoc(doc(db, "viajes", idViaje), { estado: 'rechazado' });
+            cerrarModal();
+        });
     };
 
     window.responderCliente = async (id, accion) => {
+        clearInterval(countdownInterval);
         const docRef = doc(db, "viajes", id);
         if(accion === 'aceptar') {
             await updateDoc(docRef, { estado: 'accepted' });
             cerrarModal();
             window.abrirChat(id);
         } else if(accion === 'rechazar') {
-            await updateDoc(docRef, { estado: 'buscando', ofertaDe: 'cliente' }); 
+            await updateDoc(docRef, { estado: 'rechazado' }); 
             cerrarModal();
-            alert("Has rechazado la oferta. Por favor, modifica el precio en la sección de viaje y envía una nueva oferta.");
         }
     };
 
     // --- CHAT EN TIEMPO REAL ---
     window.abrirChat = (id) => {
         cerrarModal();
-
         const oldChat = document.getElementById('chat-active');
         if(oldChat) oldChat.remove();
 
@@ -456,7 +581,7 @@
 
         chatUI.innerHTML = `
             <div style="background:orange;padding:10px;border-radius:10px;margin-bottom:10px;font-size:12px;color:black;font-weight:bold;text-align:center;">
-                ⚠️ VIAJE EN CURSO - NO CERRAR ESTE CHAT
+                ⚠️ VIAJE EN CURSO - CHAT ACTIVO
             </div>
             <div id="chat-box"></div>
             <input id="chat-input" placeholder="Escribe un mensaje...">
@@ -574,7 +699,9 @@
         document.getElementById("driver-stats").innerHTML = tabla;
     }
 
-    window.cerrarModal = () => document.getElementById("modal-negociacion").style.display = "none";
+    window.cerrarModal = () => {
+        document.getElementById("modal-negociacion").style.display = "none";
+    };
 
     // --- AUTENTICACIÓN ---
     window.switchAuth = () => {
@@ -623,47 +750,10 @@
 
                 const userCredential = await createUserWithEmailAndPassword(auth, mail, pass);
                 await setDoc(doc(db, "usuarios", userCredential.user.uid), datosUsuario);
-                alert("Registro exitoso.");
-
             } else {
                 await signInWithEmailAndPassword(auth, mail, pass);
             }
-        } catch(error) {
-            alert("Error de acceso: " + error.message);
-        }
-    });
-
-    window.cerrarSesion = () => {
-        signOut(auth).then(() => location.reload());
-    };
-
-    onAuthStateChanged(auth, async (user) => {
-        if(user) {
-            miUid = user.uid;
-            const docSnap = await getDoc(doc(db, "usuarios", miUid));
-            
-            if(docSnap.exists()){
-                const uData = docSnap.data();
-                miRol = uData.rol;
-                miNombre = uData.nombre;
-                miFoto = uData.fotoPerfil || ""; 
-                
-                document.getElementById('auth-container').classList.remove('active-section');
-                document.getElementById('btn-logout').style.display = 'block';
-
-                if(miRol === 'cliente') {
-                    document.getElementById('cliente-view').classList.add('active-section');
-                    window.initLeaflet();
-                    escucharViajeCliente();
-                } else if(miRol === 'driver') {
-                    document.getElementById('driver-view').classList.add('active-section');
-                    mostrarContabilidad();
-                    escucharViajesDriver();
-                } else if(miRol === 'admin') {
-                    document.getElementById('admin-view').classList.add('active-section');
-                }
-            }
-        }
+        } catch(error) { alert("Error en autenticación: " + error.message); }
     });
 </script>
 </body>
