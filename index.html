@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RUN CAR PRO - Global</title>
+    <title>RUN CAR PRO</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -39,7 +39,7 @@
 <body>
 
 <header>
-    <h2 style="margin:0; letter-spacing: 2px;">RUN <span style="color:var(--primary)">CAR</span> PRO</h2>
+    <h2 style="margin:0; letter-spacing: 2px;">RUN <span style="color:var(--primary)">CAR</span></h2>
 </header>
 
 <div class="container">
@@ -53,7 +53,6 @@
             <div id="reg-fields" style="display:none;">
                 <input type="text" id="reg-nombre" placeholder="Nombre Completo">
                 
-                <!-- NUEVO: Foto de Perfil General (Para Cliente y Conductor) -->
                 <label class="file-label">Foto de Perfil (Obligatorio):</label>
                 <input type="file" id="reg-foto-perfil" accept="image/*">
 
@@ -66,7 +65,6 @@
                     <option value="driver">Quiero ser Conductor</option>
                 </select>
 
-                <!-- Campos específicos para el conductor -->
                 <div id="driver-register-fields" style="display: none; border-top: 1px dashed #ccc; margin-top: 10px; padding-top: 5px;">
                     <input type="text" id="reg-placa" placeholder="Número de Placa">
                     <input type="number" id="reg-anio" placeholder="Año del Vehículo (Mayor a 2014)">
@@ -172,13 +170,13 @@
     let lMap, markerOrigen, markerDestino, polylineRuta;
     let coordsOrigen = null, coordsDestino = null;
     let miRol = "", miUid = "", miNombre = "", miFoto = "", isReg = false;
+    let chatEscuchandoActivo = false;
 
     // --- CONTROL DE CAMPOS VISIBLES EN REGISTRO ---
     document.getElementById('reg-rol').addEventListener('change', function() {
         document.getElementById('driver-register-fields').style.display = this.value === 'driver' ? 'block' : 'none';
     });
 
-    // Convierte un archivo cargado en string Base64
     const toBase64 = file => new Promise((resolve, reject) => {
         if(!file) return resolve("");
         const reader = new FileReader();
@@ -306,7 +304,7 @@
             bebes: document.getElementById("p-bebes").value,
             mascotas: document.getElementById("p-mascotas").value,
             carga: document.getElementById("p-carga").value,
-            notas: document.getElementById("p-notes").value,
+            notas: document.getElementById("notes").innerTex,
             estado: "buscando",
             timestamp: serverTimestamp()
         };
@@ -314,14 +312,21 @@
         alert("Solicitud enviada. Por favor, espera a que un conductor acepte o te envíe una nueva oferta.");
     };
 
-    // ESCUCHA DE VIAJES DEL CLIENTE (NUEVO)
+    // ESCUCHA DE VIAJES DEL CLIENTE (REPARADA: Sin orderBy innecesario para evitar error de índices Firestore)
     function escucharViajeCliente() {
-        const q = query(collection(db, "viajes"), where("clienteId", "==", miUid), orderBy("timestamp", "desc"));
+        const q = query(collection(db, "viajes"), where("clienteId", "==", miUid));
         onSnapshot(q, (snap) => {
             if(snap.empty) return;
-            const docViaje = snap.docs[0];
-            const v = docViaje.data();
-            const vId = docViaje.id;
+            
+            // Ordenar manualmente por timestamp de servidor para obtener el viaje más reciente
+            let documentos = [];
+            snap.forEach(doc => {
+                documentos.push({ id: doc.id, ...doc.data() });
+            });
+            documentos.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+            
+            const v = documentos[0];
+            const vId = v.id;
 
             // Si el driver envió una contraoferta
             if(v.estado === "negociando" && v.ofertaDe === "driver") {
@@ -329,7 +334,9 @@
             } 
             // Si el conductor aceptó o el cliente aceptó y pasó a estado 'accepted'
             else if(v.estado === "accepted") {
-                abrirChat(vId);
+                if(!document.getElementById('chat-active')) {
+                    window.abrirChat(vId);
+                }
             }
         });
     }
@@ -343,7 +350,6 @@
             snap.forEach(docSnap => {
                 const v = docSnap.data();
                 const vid = docSnap.id;
-                // Mostrar solo los buscando o los que está negociando este driver
                 if(v.estado === "buscando" || (v.estado === "negociando" && v.driverId === miUid)) {
                     const card = document.createElement("div");
                     card.className = "card";
@@ -375,7 +381,6 @@
             <div style="display:flex; flex-direction:column; gap:5px;">
                 <button class="btn-action" onclick="responderDriver('${id}', 'aceptar')">ACEPTAR VIAJE</button>
                 <button class="btn-action" style="background:#f1c40f; color:black;" onclick="contraofertaDriver('${id}')">ENVIAR NUEVA TARIFA</button>
-                <!-- RECHAZAR: Solo cierra ventana flotante para el driver -->
                 <button class="btn-action" style="background:red" onclick="responderDriver('${id}', 'rechazar')">RECHAZAR / CERRAR</button>
             </div>
         `;
@@ -387,7 +392,7 @@
         if(accion === 'aceptar') {
             await updateDoc(docRef, { estado: 'accepted', driverId: miUid, driverNombre: miNombre });
             cerrarModal();
-            abrirChat(id);
+            window.abrirChat(id);
         } else if (accion === 'contraoferta') {
             await updateDoc(docRef, { 
                 ofertaActual: valor, 
@@ -399,7 +404,6 @@
             cerrarModal();
             alert("Contraoferta enviada al cliente. Esperando confirmación...");
         } else if (accion === 'rechazar') {
-            // El driver rechaza: simplemente cerramos la ventana flotante.
             cerrarModal();
         }
     };
@@ -432,28 +436,24 @@
         if(accion === 'aceptar') {
             await updateDoc(docRef, { estado: 'accepted' });
             cerrarModal();
-            abrirChat(id);
+            window.abrirChat(id);
         } else if(accion === 'rechazar') {
-            // Cliente rechaza: cerrar ventana y debe enviar nueva propuesta
-            // Liberamos el viaje para que otro conductor lo tome, o lo cerramos
             await updateDoc(docRef, { estado: 'buscando', ofertaDe: 'cliente' }); 
             cerrarModal();
             alert("Has rechazado la oferta. Por favor, modifica el precio en la sección de viaje y envía una nueva oferta.");
         }
     };
 
-    // --- CHAT EN TIEMPO REAL CON FOTOS ---
+    // --- CHAT EN TIEMPO REAL REPARADO ---
     window.abrirChat = (id) => {
         cerrarModal();
 
         const oldChat = document.getElementById('chat-active');
         if(oldChat) oldChat.remove();
 
-        if(miRol === 'driver') {
-            document.getElementById('driver-view').classList.remove('active-section');
-        } else {
-            document.getElementById('cliente-view').classList.remove('active-section');
-        }
+        // Ocultar la sección activa correspondiente sin romper la navegación lateral
+        document.getElementById('driver-view').classList.remove('active-section');
+        document.getElementById('cliente-view').classList.remove('active-section');
 
         const chatUI = document.createElement("div");
         chatUI.className = "card active-section";
@@ -466,13 +466,16 @@
             <div id="chat-box"></div>
             <input id="chat-input" placeholder="Escribe un mensaje...">
             <button class="btn-action" id="btn-send-msg">ENVIAR</button>
-            <button class="btn-action" style="background:red;margin-top:10px;" id="btn-finalizar-viaje">FINALIZAR VIAJE</button>
+            <button class="btn-action" style="background:var(--danger);margin-top:10px;" id="btn-finalizar-viaje">FINALIZAR VIAJE</button>
         `;
 
-        document.querySelector(".container").appendChild(chatUI);
+        document.querySelector(".container").insertBefore(chatUI, document.getElementById('btn-logout'));
 
         document.getElementById('btn-send-msg').onclick = () => window.enviarMensaje(id);
         document.getElementById('btn-finalizar-viaje').onclick = () => window.finalizarViaje(id);
+
+        if (chatEscuchandoActivo) return; 
+        chatEscuchandoActivo = true;
 
         const mensajesRef = query(collection(db, "viajes", id, "mensajes"), orderBy("timestamp", "asc"));
 
@@ -486,11 +489,8 @@
                 const isMine = data.uid === miUid;
                 const div = document.createElement("div");
                 
-                // Imagen por defecto si no hay foto guardada
                 const fotoAvatar = data.foto || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
 
-                // Usamos Flexbox para ordenar foto y burbuja. 
-                // Row-reverse si es mío (derecha), Row normal si es del otro (izquierda)
                 div.style.display = "flex";
                 div.style.flexDirection = isMine ? "row-reverse" : "row";
                 div.style.alignItems = "flex-end";
@@ -527,7 +527,7 @@
             await addDoc(collection(db, "viajes", id, "mensajes"), {
                 uid: miUid,
                 user: miNombre,
-                foto: miFoto, // GUARDAMOS LA FOTO EN EL MENSAJE
+                foto: miFoto, 
                 msg: texto,
                 timestamp: serverTimestamp()
             });
@@ -547,7 +547,7 @@
         location.reload();
     };
 
-    // --- CONTABILIDAD Y PANEL ADMIN --- (Sin cambios principales, conservados)
+    // --- CONTABILIDAD ---
     async function obtenerSubtotalesDriver(driverUid, diasArray) {
         const q = query(collection(db, "viajes"), where("driverId", "==", driverUid), where("estado", "==", "finalizado"));
         const snap = await getDocs(q);
@@ -581,7 +581,7 @@
 
     window.cerrarModal = () => document.getElementById("modal-negociacion").style.display = "none";
 
-    // --- AUTENTICACIÓN Y FILTROS DE REGISTRO (ARREGLADOS Y COMPLETADOS) ---
+    // --- AUTENTICACIÓN ---
     window.switchAuth = () => {
         isReg = !isReg;
         document.getElementById('reg-fields').style.display = isReg ? 'block' : 'none';
@@ -589,7 +589,6 @@
         if(!isReg) document.getElementById('driver-register-fields').style.display = 'none';
     };
 
-    // Script agregado al botón de auth
     document.getElementById('btn-auth-main').addEventListener('click', async () => {
         const mail = document.getElementById('auth-email').value;
         const pass = document.getElementById('auth-pass').value;
@@ -601,7 +600,6 @@
                 const nombre = document.getElementById('reg-nombre').value;
                 const rolSeleccionado = document.getElementById('reg-rol').value;
                 
-                // Extraer Foto de Perfil
                 const filePerfil = document.getElementById('reg-foto-perfil').files[0];
                 if(!filePerfil) return alert("La foto de perfil es obligatoria.");
                 const base64Perfil = await toBase64(filePerfil);
@@ -609,7 +607,7 @@
                 let datosUsuario = {
                     nombre: nombre,
                     rol: rolSeleccionado,
-                    fotoPerfil: base64Perfil, // Gurdando la foto
+                    fotoPerfil: base64Perfil, 
                     whatsapp: document.getElementById('reg-prefijo').value + document.getElementById('reg-tel').value,
                     activo: true
                 };
@@ -642,7 +640,6 @@
         signOut(auth).then(() => location.reload());
     };
 
-    // CONTROL DE ESTADOS Y FLUJOS AL LOGUEAR
     onAuthStateChanged(auth, async (user) => {
         if(user) {
             miUid = user.uid;
@@ -652,7 +649,7 @@
                 const uData = docSnap.data();
                 miRol = uData.rol;
                 miNombre = uData.nombre;
-                miFoto = uData.fotoPerfil || ""; // Cargamos la foto en memoria para usarla en los chats
+                miFoto = uData.fotoPerfil || ""; 
                 
                 document.getElementById('auth-container').classList.remove('active-section');
                 document.getElementById('btn-logout').style.display = 'block';
@@ -660,19 +657,17 @@
                 if(miRol === 'cliente') {
                     document.getElementById('cliente-view').classList.add('active-section');
                     initLeaflet();
-                    escucharViajeCliente(); // Activamos escucha para que le abran el chat/ofertas
+                    escucharViajeCliente(); 
                 } else if(miRol === 'driver') {
                     document.getElementById('driver-view').classList.add('active-section');
                     mostrarContabilidad();
                     escucharViajesDriver();
                 } else if(miRol === 'admin') {
                     document.getElementById('admin-view').classList.add('active-section');
-                    // initAdmin(); // Si usas la lógica de admin
                 }
             }
         }
     });
-
 </script>
 </body>
 </html>
