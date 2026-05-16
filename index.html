@@ -75,7 +75,7 @@
                     <label class="file-label">Foto de Tarjeta de Circulación:</label>
                     <input type="file" id="reg-foto-tarjeta" accept="image/*">
 
-                    <label class="file-label">Foto de solvencia de la Policia:</label>
+                    <label class="file-label">Foto de solvencia de la Policía:</label>
                     <input type="file" id="reg-foto-solvencia" accept="image/*">
 
                     <label class="file-label">Foto de Antecedentes Penales:</label>
@@ -116,7 +116,7 @@
                 <input type="number" id="oferta-cliente" placeholder="Tu oferta $" style="font-size:18px; text-align:center;">
                 <button class="btn-action" id="btn-publicar-viaje" onclick="publicarViaje()">ENVIAR OFERTA AL CONDUCTOR</button>
             </div>
-            <button id="btn-calc" onclick="calcularRutaOSRM()" class="btn-action" style="background:#444;">CALCULANDO RUTA...</button>
+            <button id="btn-calc" onclick="calcularRutaOSRM()" class="btn-action" style="background:#444;">CALCULAR RUTA</button>
         </div>
     </div>
 
@@ -291,6 +291,7 @@
 
     // --- GESTIÓN DE VIAJES Y NEGOCIACIÓN ---
     window.publicarViaje = async () => {
+        if (!miUid) return alert("Identificación de usuario no válida.");
         const viaje = {
             clienteId: miUid,
             clienteNombre: miNombre,
@@ -304,7 +305,7 @@
             bebes: document.getElementById("p-bebes").value,
             mascotas: document.getElementById("p-mascotas").value,
             carga: document.getElementById("p-carga").value,
-            notas: document.getElementById("notes").innerTex,
+            notas: document.getElementById("p-notes").value,
             estado: "buscando",
             timestamp: serverTimestamp()
         };
@@ -312,13 +313,11 @@
         alert("Solicitud enviada. Por favor, espera a que un conductor acepte o te envíe una nueva oferta.");
     };
 
-    // ESCUCHA DE VIAJES DEL CLIENTE (REPARADA: Sin orderBy innecesario para evitar error de índices Firestore)
     function escucharViajeCliente() {
         const q = query(collection(db, "viajes"), where("clienteId", "==", miUid));
         onSnapshot(q, (snap) => {
             if(snap.empty) return;
             
-            // Ordenar manualmente por timestamp de servidor para obtener el viaje más reciente
             let documentos = [];
             snap.forEach(doc => {
                 documentos.push({ id: doc.id, ...doc.data() });
@@ -328,11 +327,9 @@
             const v = documentos[0];
             const vId = v.id;
 
-            // Si el driver envió una contraoferta
             if(v.estado === "negociando" && v.ofertaDe === "driver") {
                 abrirNegociacionCliente(vId, v);
             } 
-            // Si el conductor aceptó o el cliente aceptó y pasó a estado 'accepted'
             else if(v.estado === "accepted") {
                 if(!document.getElementById('chat-active')) {
                     window.abrirChat(vId);
@@ -341,7 +338,6 @@
         });
     }
 
-    // ESCUCHA DE VIAJES DEL DRIVER
     function escucharViajesDriver() {
         onSnapshot(collection(db, "viajes"), (snap) => {
             const container = document.getElementById("lista-viajes-global");
@@ -356,7 +352,7 @@
                     card.innerHTML = `
                         <p><b>De:</b> ${v.origen ? v.origen.substring(0,40) : ''}...</p>
                         <p><b>A:</b> ${v.destino ? v.destino.substring(0,40) : ''}...</p>
-                        <p><b>Precio App:</b> ${v.precioApp} | <b>Oferta Cliente:</b> $${v.ofertaActual}</p>
+                        <p><b>Precio App:</b> ${v.precioApp} | <b>Oferta Client:</b> $${v.ofertaActual}</p>
                         <button class="btn-action" onclick="abrirNegociacionDriver('${vid}')">VER DETALLES / RESPONDER</button>
                     `;
                     container.appendChild(card);
@@ -444,14 +440,13 @@
         }
     };
 
-    // --- CHAT EN TIEMPO REAL REPARADO ---
+    // --- CHAT EN TIEMPO REAL ---
     window.abrirChat = (id) => {
         cerrarModal();
 
         const oldChat = document.getElementById('chat-active');
         if(oldChat) oldChat.remove();
 
-        // Ocultar la sección activa correspondiente sin romper la navegación lateral
         document.getElementById('driver-view').classList.remove('active-section');
         document.getElementById('cliente-view').classList.remove('active-section');
 
@@ -621,6 +616,8 @@
                     datosUsuario.anio = anio;
                     datosUsuario.fotoLicencia = await toBase64(document.getElementById('reg-foto-licencia').files[0]);
                     datosUsuario.fotoTarjeta = await toBase64(document.getElementById('reg-foto-tarjeta').files[0]);
+                    datosUsuario.fotoSolvencia = await toBase64(document.getElementById('reg-foto-solvencia').files[0]);
+                    datosUsuario.fotoAntecedentes = await toBase64(document.getElementById('reg-foto-antecedentes').files[0]);
                     datosUsuario.fotoVehiculo = await toBase64(document.getElementById('reg-foto-vehiculo').files[0]);
                 }
 
@@ -656,8 +653,8 @@
 
                 if(miRol === 'cliente') {
                     document.getElementById('cliente-view').classList.add('active-section');
-                    initLeaflet();
-                    escucharViajeCliente(); 
+                    window.initLeaflet();
+                    escucharViajeCliente();
                 } else if(miRol === 'driver') {
                     document.getElementById('driver-view').classList.add('active-section');
                     mostrarContabilidad();
