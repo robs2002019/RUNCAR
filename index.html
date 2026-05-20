@@ -125,7 +125,8 @@
         <div class="card">
             <h4 style="margin:0">Ganancias (Últimos 5 días)</h4>
             <div id="driver-stats"></div>
-        </div>
+            <h4 style="margin:0">Link de pago en usd $$: https://link.cubopago.com/JZGDO3DLh_vT</h4>
+      </div>
         <h4 style="color:var(--primary)">Viajes Solicitados</h4>
         <div id="lista-viajes-global"></div>
     </div>
@@ -313,10 +314,10 @@
         } catch(e) { alert("Error al calcular ruta"); }
     };
 
-    // --- TEMPORIZADOR DE 8 SEGUNDOS GLOBAL ---
+    // --- TEMPORIZADOR DE 150 SEGUNDOS GLOBAL ---
     function iniciarTemporizador(idViaje, accionTimeout) {
         clearInterval(countdownInterval);
-        let tiempoRestante = 8;
+        let tiempoRestante = 150;
         const timerElement = document.getElementById("timer-countdown");
         if(timerElement) timerElement.innerText = tiempoRestante;
 
