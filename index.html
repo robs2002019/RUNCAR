@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RUN CAR</title>
+    <title>RUN CAR PRO</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -28,8 +28,9 @@
         .suggestions { background: white; color: black; position: absolute; width: 100%; z-index: 1000; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); max-height: 150px; overflow-y: auto; }
         .suggestion-item { padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 13px; }
         
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; color: #333; font-size: 12px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; color: #333; font-size: 13px; }
         th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
+        .financial-row { display: flex; justify-content: space-between; margin: 5px 0; font-size: 13px; }
         
         #chat-box { height: 250px; overflow-y: auto; background: var(--chat-bg); padding: 10px; border-radius: 10px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 10px; }
         .file-label { font-size: 12px; display: block; margin-top: 6px; color: #555; font-weight: bold; }
@@ -125,9 +126,24 @@
     <!-- VISTA CONDUCTOR -->
     <div id="driver-view" class="section">
         <div class="card">
-            <h4 style="margin:0">Ganancias (Últimos 5 días)</h4>
-            <div id="driver-stats"></div>
-            <h4 style="margin:0">Link de pago en usd $$: https://link.cubopago.com/JZGDO3DLh_vT</h4>
+            <h4 style="margin:0 0 10px 0; color:#333;">Resumen de Ingresos (Últimos 5 Días)</h4>
+            <table id="table-ingresos-dias">
+                <thead>
+                    <tr style="background:#f2f2f2;">
+                        <th>Fecha</th>
+                        <th>Monto Bruto</th>
+                    </tr>
+                </thead>
+                <tbody id="body-ingresos-dias">
+                    <!-- Dinámico -->
+                </tbody>
+            </table>
+            <hr style="border:0; border-top:1px dashed #ccc; margin:10px 0;">
+            <div class="financial-row"><span>Total Bruto:</span><b id="driver-total-bruto">$0.00</b></div>
+            <div class="financial-row" style="color:var(--danger);"><span>Comisión App (8%):</span><b id="driver-comision">-$0.00</b></div>
+            <div class="financial-row" style="color:var(--primary); font-size:15px; font-weight:bold; border-top:1px solid #eee; padding-top:5px;"><span>Ingreso Neto Pasajero:</span><b id="driver-total-neto">$0.00</b></div>
+            
+            <h4 style="margin:15px 0 0 0; font-size:12px; color:#555; text-align:center;">Link de pago en usd $$: https://link.cubopago.com/JZGDO3DLh_vT</h4>
         </div>
         <h4 style="color:var(--primary)">Viajes Solicitados</h4>
         <div id="lista-viajes-global"></div>
@@ -203,7 +219,7 @@
                 const modelo = document.getElementById('reg-modelo').value;
                 const anio = document.getElementById('reg-anio').value;
                 if(!placa || !marca || !modelo || !anio) return alert("Completa todos los datos de tu vehículo.");
-                driverData = { placa, marca, modelo, anio: parseInt(anio) };
+                driverData = { placa, marca, modelo, anio: parseInt(anio), ingresosDiarios: [] };
             }
 
             try {
@@ -226,24 +242,26 @@
     onAuthStateChanged(auth, async (user) => {
         if (user) {
             miUid = user.uid;
-            const userDoc = await getDoc(doc(db, "usuarios", miUid));
-            if(userDoc.exists()) {
-                const data = userDoc.data();
-                miRol = data.rol; miNombre = data.nombre; miFoto = data.fotoPerfil;
-                miPlaca = data.placa || ""; miMarca = data.marca || ""; miModelo = data.modelo || "";
-                
-                document.getElementById('auth-container').classList.remove('active-section');
-                document.getElementById('btn-logout').style.display = 'block';
-                
-                if(miRol === 'cliente') {
-                    document.getElementById('cliente-view').classList.add('active-section');
-                    window.initLeaflet(); escucharViajeCliente();
-                } else if(miRol === 'driver') {
-                    document.getElementById('driver-view').classList.add('active-section');
-                    if(document.getElementById("driver-stats")) document.getElementById("driver-stats").innerHTML = "<p>$0.00 en viajes</p>";
-                    escucharViajesDriver();
+            // Escuchar el perfil del usuario en tiempo real para mantener actualizadas las finanzas
+            onSnapshot(doc(db, "usuarios", miUid), (userDoc) => {
+                if(userDoc.exists()) {
+                    const data = userDoc.data();
+                    miRol = data.rol; miNombre = data.nombre; miFoto = data.fotoPerfil;
+                    miPlaca = data.placa || ""; miMarca = data.marca || ""; miModelo = data.modelo || "";
+                    
+                    document.getElementById('auth-container').classList.remove('active-section');
+                    document.getElementById('btn-logout').style.display = 'block';
+                    
+                    if(miRol === 'cliente') {
+                        document.getElementById('cliente-view').classList.add('active-section');
+                        window.initLeaflet(); escucharViajeCliente();
+                    } else if(miRol === 'driver') {
+                        document.getElementById('driver-view').classList.add('active-section');
+                        calcularYRenderizarFinanzas(data.ingresosDiarios || []);
+                        escucharViajesDriver();
+                    }
                 }
-            }
+            });
         } else {
             miUid = ""; miRol = "";
             document.getElementById('auth-container').classList.add('active-section');
@@ -255,6 +273,46 @@
     });
 
     window.cerrarSesion = () => signOut(auth);
+
+    // --- MEJORA: CALCULAR FINANZAS DIARIAS (ÚLTIMOS 5 DÍAS + 8%) ---
+    function calcularYRenderizarFinanzas(ingresosDiarios) {
+        const tbody = document.getElementById("body-ingresos-dias");
+        if(!tbody) return;
+        tbody.innerHTML = "";
+
+        // Ordenamos los ingresos por fecha descendente y tomamos solo los últimos 5 días
+        const ultimosCinco = [...ingresosDiarios]
+            .sort((a,b) => new Date(b.fecha) - new Date(a.fecha))
+            .slice(0, 5);
+
+        let totalBruto = 0;
+
+        if(ultimosCinco.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="2" style="text-align:center; color:#999;">Sin actividad de viajes registrada</td></tr>`;
+        } else {
+            ultimosCinco.forEach(item => {
+                totalBruto += item.monto;
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${formatearFechaElegante(item.fecha)}</td>
+                        <td><b>$${item.monto.toFixed(2)}</b></td>
+                    </tr>
+                `;
+            });
+        }
+
+        const comision = totalBruto * 0.08;
+        const totalNeto = totalBruto - comision;
+
+        document.getElementById("driver-total-bruto").innerText = `$${totalBruto.toFixed(2)}`;
+        document.getElementById("driver-comision").innerText = `-$${comision.toFixed(2)}`;
+        document.getElementById("driver-total-neto").innerText = `$${totalNeto.toFixed(2)}`;
+    }
+
+    function formatearFechaElegante(fechaStr) {
+        const opciones = { day: 'numeric', month: 'short', year: 'numeric' };
+        return new Date(fechaStr + "T00:00:00").toLocaleDateString('es-ES', opciones);
+    }
 
     // --- MAPA ---
     window.initLeaflet = () => {
@@ -394,7 +452,6 @@
                 return;
             }
 
-            // Cambiado a validar tanto "buscando" como "negociando" de forma combinada
             if(v.estado === "buscando" || v.estado === "negociando") {
                 const modal = document.getElementById("modal-negociacion");
                 if (modal.style.display !== "flex") modal.style.display = "flex";
@@ -453,7 +510,6 @@
         if(accion === 'aceptar') {
             const snap = await getDoc(docRef); const v = snap.data();
             const prop = v.propuestasDrivers[driverId];
-            // Se inyectan de manera explícita todos los campos del Driver al documento del viaje para que el chat los lea
             await updateDoc(docRef, {
                 estado: 'accepted', 
                 driverId: prop.driverId, 
@@ -476,7 +532,6 @@
             const container = document.getElementById("lista-viajes-global"); if(!container) return; container.innerHTML = "";
             snap.forEach(docSnap => {
                 const v = docSnap.data(); const vid = docSnap.id;
-                // Un driver puede entrar a interactuar si el viaje está en 'buscando' o si ya está en fase de 'negociando'
                 if(v.estado === "buscando" || v.estado === "negociando") {
                     const card = document.createElement("div"); card.className = "card";
                     card.innerHTML = `
@@ -551,7 +606,7 @@
                 if(dataU.driverId === miUid) window.abrirChat(id); else alert("Otro conductor aceptó este viaje.");
                 return;
             }
-            v = dataU; // Sincroniza la lectura en tiempo real
+            v = dataU;
             renderUIConductor();
         });
 
@@ -565,7 +620,6 @@
 
         const monto = prompt("Ingresa tu contraoferta económica:");
         if(monto && !isNaN(monto) && parseFloat(monto) > 0) {
-            // Pasamos el estado de forma obligatoria a "negociando" para que el cliente capture la actualización
             await updateDoc(docRef, {
                 estado: "negociando",
                 [`propuestasDrivers.${miUid}`]: {
@@ -611,7 +665,6 @@
                 ⚠️ VIAJE EN CURSO - CONEXIÓN CON ENCRIPTACIÓN DIRECTA
             </div>
             
-            <!-- CABECERA EXIGIDA: FOTOS DE PERFIL + DETALLES COMPLETOS -->
             <div style="display: flex; justify-content: space-between; align-items: center; background: #f7f9fa; padding: 12px; border-radius: 15px; border: 1px solid var(--primary); color: #333; margin-bottom: 8px;">
                 <div style="text-align: center; flex: 1; min-width: 0;">
                     <img src="${v.clienteFoto || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary);">
@@ -669,9 +722,51 @@
         });
     };
 
+    // --- MEJORA: PROCESAMIENTO E INYECCIÓN DE INGRESOS COMPLETO ---
     window.finalizarViaje = async (id) => {
         if(confirm("¿Confirmas la finalización y el cierre del viaje?")) {
-            await updateDoc(doc(db, "viajes", id), { estado: 'finalizado' });
+            const viajeRef = doc(db, "viajes", id);
+            const viajeSnap = await getDoc(viajeRef);
+            
+            if(viajeSnap.exists()) {
+                const dataViaje = viajeSnap.data();
+                const montoFinal = parseFloat(dataViaje.ofertaActual) || 0;
+                const driverId = dataViaje.driverId;
+
+                // Si el rol es el del conductor que hizo el viaje, guardamos las finanzas
+                if(miRol === 'driver' && driverId === miUid) {
+                    const driverRef = doc(db, "usuarios", miUid);
+                    const driverSnap = await getDoc(driverRef);
+
+                    if(driverSnap.exists()) {
+                        const dataDriver = driverSnap.data();
+                        let ingresosArr = dataDriver.ingresosDiarios || [];
+                        
+                        // Obtenemos fecha local en formato YYYY-MM-DD
+                        const hoy = new Date().toISOString().split('T')[0];
+
+                        // Buscamos si ya existe el día registrado para acumular el valor
+                        const indexDia = ingresosArr.findIndex(i => i.fecha === hoy);
+                        if(indexDia !== -1) {
+                            ingresosArr[indexDia].monto += montoFinal;
+                        } else {
+                            ingresosArr.unshift({ fecha: hoy, monto: montoFinal });
+                        }
+
+                        // Cortamos para asegurar que solo se guarden estrictamente los últimos 5 días
+                        if(ingresosArr.length > 5) {
+                            ingresosArr = ingresosArr.slice(0, 5);
+                        }
+
+                        // Guardamos el arreglo actualizado en el perfil del Driver
+                        await updateDoc(driverRef, { ingresosDiarios: ingresosArr });
+                    }
+                }
+            }
+
+            // Cambiar estado global del viaje
+            await updateDoc(viajeRef, { estado: 'finalizado' });
+            
             if(document.getElementById('chat-active')) document.getElementById('chat-active').remove();
             if(miRol === 'cliente') document.getElementById('cliente-view').classList.add('active-section');
             else document.getElementById('driver-view').classList.add('active-section');
