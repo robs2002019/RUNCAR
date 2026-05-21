@@ -35,9 +35,6 @@
         #chat-box { height: 250px; overflow-y: auto; background: var(--chat-bg); padding: 10px; border-radius: 10px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 10px; }
         .file-label { font-size: 12px; display: block; margin-top: 6px; color: #555; font-weight: bold; }
         .countdown-timer { background: var(--danger); color: white; padding: 5px; text-align: center; border-radius: 8px; font-weight: bold; margin-bottom: 10px; }
-        
-        .support-contact { text-align: center; font-size: 12px; margin-top: 15px; color: #666; border-top: 1px solid #eee; padding-top: 10px; }
-        .support-contact a { color: var(--primary); font-weight: bold; text-decoration: none; }
     </style>
 </head>
 <body>
@@ -123,12 +120,6 @@
                 <button class="btn-action" id="btn-publicar-viaje" onclick="publicarViaje()">ENVIAR OFERTA AL CONDUCTOR</button>
             </div>
             <button id="btn-calc" onclick="calcularRutaOSRM()" class="btn-action" style="background:#444;">CALCULAR RUTA</button>
-            
-            <!-- SOPORTE CLIENTE -->
-            <div class="support-contact">
-                Para quejas, consultas o información:<br>
-                <a href="mailto:atencionalclienteruncar@outlook.com">atencionalclienteruncar@outlook.com</a>
-            </div>
         </div>
     </div>
 
@@ -153,12 +144,6 @@
             <div class="financial-row" style="color:var(--primary); font-size:15px; font-weight:bold; border-top:1px solid #eee; padding-top:5px;"><span>Ingreso Neto Pasajero:</span><b id="driver-total-neto">$0.00</b></div>
             
             <h4 style="margin:15px 0 0 0; font-size:12px; color:#555; text-align:center;">Link de pago en usd $$: https://link.cubopago.com/JZGDO3DLh_vT</h4>
-            
-            <!-- SOPORTE DRIVER -->
-            <div class="support-contact">
-                Para quejas, consultas o información:<br>
-                <a href="mailto:atencionalclienteruncar@outlook.com">atencionalclienteruncar@outlook.com</a>
-            </div>
         </div>
         <h4 style="color:var(--primary)">Viajes Solicitados</h4>
         <div id="lista-viajes-global"></div>
@@ -257,6 +242,7 @@
     onAuthStateChanged(auth, async (user) => {
         if (user) {
             miUid = user.uid;
+            // Escuchar el perfil del usuario en tiempo real para mantener actualizadas las finanzas
             onSnapshot(doc(db, "usuarios", miUid), (userDoc) => {
                 if(userDoc.exists()) {
                     const data = userDoc.data();
@@ -288,12 +274,13 @@
 
     window.cerrarSesion = () => signOut(auth);
 
-    // --- FINANZAS ---
+    // --- MEJORA: CALCULAR FINANZAS DIARIAS (ÚLTIMOS 5 DÍAS + 8%) ---
     function calcularYRenderizarFinanzas(ingresosDiarios) {
         const tbody = document.getElementById("body-ingresos-dias");
         if(!tbody) return;
         tbody.innerHTML = "";
 
+        // Ordenamos los ingresos por fecha descendente y tomamos solo los últimos 5 días
         const ultimosCinco = [...ingresosDiarios]
             .sort((a,b) => new Date(b.fecha) - new Date(a.fecha))
             .slice(0, 5);
@@ -403,7 +390,7 @@
         } catch(e) { alert("Error al calcular ruta"); }
     };
 
-    // --- SINCRO TEMPORIZADOR GLOBAL ---
+    // --- SINCRO TEMPORIZADOR GLOBAL (150 SEGUNDOS) ---
     function iniciarTemporizador(idViaje, expiresAt, accionTimeout) {
         clearInterval(countdownInterval);
         const actualizar = async () => {
@@ -450,11 +437,12 @@
             documentos.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
             const v = documentos[0]; const vId = v.id;
 
-            // Manejo de Cancelado en la vista del Cliente
             if(v.estado === "cancelado" || v.estado === "finalizado") {
                 clearInterval(countdownInterval); cerrarModal();
-                // Si el chat ya no es manejado internamente o se cierra globalmente
-                // Aquí solo nos aseguramos de que no queden ventanas basura si no está el chat.
+                if(document.getElementById('chat-active')) {
+                    document.getElementById('chat-active').remove();
+                    document.getElementById('cliente-view').classList.add('active-section');
+                }
                 return;
             }
 
@@ -565,132 +553,225 @@
         }
         
         let v = snapshot.data(); const modal = document.getElementById("modal-negociacion"); const body = document.getElementById("modal-content-body");
-        modal.style.display = "flex";
-
-        iniciarTemporizador(id, v.expiresAt, async () => { cerrarModal(); });
 
         const renderUIConductor = () => {
             const miPropuestaInfo = v.propuestasDrivers?.[miUid];
             if (miPropuestaInfo && miPropuestaInfo.estado === 'rechazado') {
                 body.innerHTML = `
                     <div class="countdown-timer">Tiempo Restante: <span class="timer-countdown">0</span>s</div>
-                    <h3 style="margin-top:0; color:var(--danger)">Oferta Rechazada</h3>
-                    <p>El cliente rechazó tu oferta.</p>
-                    <button class="btn-action" onclick="cerrarModal()">CERRAR</button>
-                `;
-            } else if (v.estado === 'accepted' && v.driverId === miUid) {
-                cerrarModal();
-                if(!document.getElementById('chat-active')) window.abrirChat(id);
-            } else {
+                    <h3>Tu propuesta fue rechazada</h3>
+                    <p>El cliente rechazó tu oferta de $${miPropuestaInfo.monto.toFixed(2)}.</p>
+                    ${miPropuestaInfo.count < 2 ? 
+                      `<button class="btn-action" style="background:var(--accent); color:black;" onclick="contraofertaDriver('${id}')">ENVIAR NUEVA PROPUESTA (Intento ${miPropuestaInfo.count}/2)</button>` : 
+                      `<p style="color:var(--danger); font-weight:bold; text-align:center;">Límite máximo de 2 contraofertas alcanzado.</p>`}
+                    <button class="btn-action" style="background:#999; margin-top:5px;" onclick="cerrarModal()">CERRAR VENTANA</button>
+                `; return;
+            }
+            if (miPropuestaInfo && miPropuestaInfo.estado === 'pendiente') {
                 body.innerHTML = `
                     <div class="countdown-timer">Tiempo Restante: <span class="timer-countdown">0</span>s</div>
-                    <h3 style="margin-top:0;">Ofrecer Tarifa</h3>
-                    <p>App: $${v.precioApp} | Oferta Cliente: <b>$${v.ofertaActual}</b></p>
-                    <input type="number" id="oferta-driver-${id}" placeholder="Tu oferta $" value="${v.ofertaActual}">
-                    <button class="btn-action" onclick="enviarOfertaDriver('${id}')">ENVIAR OFERTA</button>
-                    <button class="btn-action" style="background:#777;" onclick="cerrarModal()">CANCELAR</button>
-                `;
+                    <h3>Oferta en Evaluación</h3>
+                    <p style="text-align:center;">Enviaste una propuesta de <b>$${miPropuestaInfo.monto.toFixed(2)}</b>.<br>Esperando que el cliente responda...</p>
+                    <button class="btn-action" style="background:#999; margin-top:5px;" onclick="cerrarModal()">REVISAR MÁS TARDE</button>
+                `; return;
             }
+
+            const countEnviados = miPropuestaInfo ? miPropuestaInfo.count : 0;
+            body.innerHTML = `
+                <div class="countdown-timer">Tiempo Restante: <span class="timer-countdown">0</span>s</div>
+                <h3 style="margin-top:0;">Detalles de la Solicitud</h3>
+                <p style="font-size:12px; margin:4px 0;"><b>Origen:</b> ${v.origen}</p>
+                <p style="font-size:12px; margin:4px 0;"><b>Destino:</b> ${v.destino}</p>
+                <p style="font-size:14px; margin:10px 0;">Sugerido App: ${v.precioApp} | Oferta: <span style="color:var(--primary);font-weight:bold;">$${v.ofertaActual}</span></p>
+                <hr style="border:0; border-top:1px solid #eee;">
+                <div style="display:flex; flex-direction:column; gap:5px;">
+                    <button class="btn-action" onclick="responderDriver('${id}', 'aceptar')">ACEPTAR POR $${v.ofertaActual}</button>
+                    ${countEnviados < 2 ? 
+                      `<button class="btn-action" style="background:var(--accent); color:black;" onclick="contraofertaDriver('${id}')">CONTRAOFERTAR (${countEnviados}/2)</button>` : 
+                      `<button class="btn-action" style="background:#ccc;color:#666;" disabled>MÁXIMO DE OFERTAS ALCANZADO</button>`}
+                    <button class="btn-action" style="background:var(--danger);" onclick="cerrarModal()">RECHAZAR / CERRAR</button>
+                </div>
+            `;
         };
 
-        const unsubscribe = onSnapshot(docRef, (docSnap) => {
+        modal.style.display = "flex"; renderUIConductor();
+
+        const unsub = onSnapshot(docRef, (docSnap) => {
             if(!docSnap.exists() || docSnap.data().estado === 'cancelado') {
-                unsubscribe(); cerrarModal(); return;
+                clearInterval(countdownInterval); cerrarModal(); unsub(); return;
             }
-            v = docSnap.data();
+            const dataU = docSnap.data();
+            if(dataU.estado === 'accepted') {
+                clearInterval(countdownInterval); cerrarModal(); unsub();
+                if(dataU.driverId === miUid) window.abrirChat(id); else alert("Otro conductor aceptó este viaje.");
+                return;
+            }
+            v = dataU;
             renderUIConductor();
         });
+
+        iniciarTemporizador(id, v.expiresAt, () => { cerrarModal(); unsub(); });
     };
 
-    window.enviarOfertaDriver = async (viajeId) => {
-        const oferta = parseFloat(document.getElementById(`oferta-driver-${viajeId}`).value);
-        if(isNaN(oferta) || oferta <= 0) return alert("Ingresa una oferta válida");
-        const docRef = doc(db, "viajes", viajeId);
-        await updateDoc(docRef, {
-            [`propuestasDrivers.${miUid}`]: {
-                driverId: miUid, driverNombre: miNombre, driverFoto: miFoto,
-                driverPlaca: miPlaca, driverMarca: miMarca, driverModelo: miModelo,
-                monto: oferta, estado: 'pendiente', count: 1
-            },
-            estado: 'negociando'
-        });
-    };
+    window.contraofertaDriver = async (id) => {
+        const docRef = doc(db, "viajes", id); const snap = await getDoc(docRef); const v = snap.data();
+        const currentCount = v.propuestasDrivers?.[miUid]?.count || 0;
+        if(currentCount >= 2) return alert("Alcanzaste tu límite de 2 contraofertas.");
 
-    // --- CHAT Y CANCELACIÓN EN CURSO ---
-    window.abrirChat = (viajeId) => {
-        // Ocultar las otras secciones temporalmente
-        document.getElementById('cliente-view').classList.remove('active-section');
-        document.getElementById('driver-view').classList.remove('active-section');
-
-        const chatContainer = document.createElement("div");
-        chatContainer.id = "chat-active";
-        chatContainer.className = "section active-section card";
-        chatContainer.innerHTML = `
-            <h3 style="margin-top:0;">Viaje en Curso</h3>
-            <div id="chat-box"></div>
-            <div style="display:flex; gap:5px;">
-                <input type="text" id="chat-input" placeholder="Escribe un mensaje..." style="flex:1;">
-                <button class="btn-action" style="width:auto; padding:12px;" onclick="enviarMensaje('${viajeId}')">ENVIAR</button>
-            </div>
-            <button class="btn-action" style="background:var(--danger); margin-top:15px;" onclick="cancelarViajeChat('${viajeId}')">CANCELAR VIAJE</button>
-        `;
-        document.querySelector('.container').insertBefore(chatContainer, document.getElementById('btn-logout'));
-
-        // Cargar y escuchar mensajes
-        const chatRef = collection(db, "viajes", viajeId, "chat");
-        const qChat = query(chatRef, orderBy("timestamp", "asc"));
-        window.chatUnsubscribe = onSnapshot(qChat, (snap) => {
-            const box = document.getElementById("chat-box");
-            if(!box) return;
-            box.innerHTML = "";
-            snap.forEach(msgDoc => {
-                const msg = msgDoc.data();
-                const isMe = msg.senderId === miUid;
-                box.innerHTML += `<div style="text-align:${isMe ? 'right' : 'left'}; margin-bottom:5px;">
-                    <span style="background:${isMe ? 'var(--primary)' : '#ccc'}; color:${isMe ? 'white' : 'black'}; padding:5px 10px; border-radius:10px; display:inline-block; font-size:13px;">
-                        ${msg.text}
-                    </span>
-                </div>`;
-            });
-            box.scrollTop = box.scrollHeight;
-        });
-
-        // Escuchar el estado del viaje (Si se cancela, avisar y cerrar chat)
-        window.viajeStatusUnsubscribe = onSnapshot(doc(db, "viajes", viajeId), (docSnap) => {
-            if(docSnap.exists()) {
-                const data = docSnap.data();
-                if(data.estado === 'cancelado') {
-                    alert("El viaje ha Sido cancelado");
-                    if(window.chatUnsubscribe) window.chatUnsubscribe();
-                    if(window.viajeStatusUnsubscribe) window.viajeStatusUnsubscribe();
-                    
-                    const activeChat = document.getElementById('chat-active');
-                    if (activeChat) activeChat.remove();
-
-                    // Regresar a la vista correspondiente
-                    document.getElementById(miRol === 'cliente' ? 'cliente-view' : 'driver-view').classList.add('active-section');
+        const monto = prompt("Ingresa tu contraoferta económica:");
+        if(monto && !isNaN(monto) && parseFloat(monto) > 0) {
+            await updateDoc(docRef, {
+                estado: "negociando",
+                [`propuestasDrivers.${miUid}`]: {
+                    driverId: miUid, driverNombre: miNombre, driverFoto: miFoto || "",
+                    driverPlaca: miPlaca, driverMarca: miMarca, driverModelo: miModelo,
+                    monto: parseFloat(monto), count: currentCount + 1, estado: "pendiente"
                 }
-            }
-        });
-    };
-
-    window.enviarMensaje = async (viajeId) => {
-        const input = document.getElementById("chat-input");
-        if(!input.value.trim()) return;
-        await addDoc(collection(db, "viajes", viajeId, "chat"), {
-            text: input.value.trim(),
-            senderId: miUid,
-            timestamp: serverTimestamp()
-        });
-        input.value = "";
-    };
-
-    window.cancelarViajeChat = async (viajeId) => {
-        if(confirm("¿Seguro que deseas cancelar este viaje?")) {
-            await updateDoc(doc(db, "viajes", viajeId), { estado: 'cancelado' });
+            });
         }
     };
 
+    window.responderDriver = async (id, accion) => {
+        if(accion === 'aceptar') {
+            const docRef = doc(db, "viajes", id); const snapActual = await getDoc(docRef);
+            if(snapActual.data().estado === 'accepted') return alert("Este viaje ya fue tomado.");
+            await updateDoc(docRef, { 
+                estado: 'accepted', 
+                driverId: miUid, 
+                driverNombre: miNombre, 
+                driverFoto: miFoto || "",
+                driverPlaca: miPlaca, 
+                driverMarca: miMarca, 
+                driverModelo: miModelo
+            });
+            cerrarModal();
+        }
+    };
+
+    // --- VENTANA DE CHAT EN TIEMPO REAL ---
+    window.abrirChat = async (id) => {
+        cerrarModal();
+        if(document.getElementById('chat-active')) document.getElementById('chat-active').remove();
+
+        document.getElementById('driver-view').classList.remove('active-section');
+        document.getElementById('cliente-view').classList.remove('active-section');
+
+        const viajeSnap = await getDoc(doc(db, "viajes", id)); if(!viajeSnap.exists()) return;
+        const v = viajeSnap.data();
+
+        const chatUI = document.createElement("div"); chatUI.className = "card active-section"; chatUI.id = "chat-active";
+        chatUI.innerHTML = `
+            <div style="background:orange;padding:8px;border-radius:10px;margin-bottom:10px;font-size:11px;color:black;font-weight:bold;text-align:center;">
+                ⚠️ VIAJE EN CURSO - CONEXIÓN CON ENCRIPTACIÓN DIRECTA
+            </div>
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; background: #f7f9fa; padding: 12px; border-radius: 15px; border: 1px solid var(--primary); color: #333; margin-bottom: 8px;">
+                <div style="text-align: center; flex: 1; min-width: 0;">
+                    <img src="${v.clienteFoto || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary);">
+                    <div style="font-size: 10px; color: #777; margin-top:2px;">Cliente</div>
+                    <div style="font-size: 12px; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${v.clienteNombre}</div>
+                </div>
+                <div style="font-size: 20px; color: var(--primary); font-weight: bold; padding: 0 10px;">⚡</div>
+                <div style="text-align: center; flex: 1; min-width: 0;">
+                    <img src="${v.driverFoto || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary);">
+                    <div style="font-size: 10px; color: #777; margin-top:2px;">Conductor</div>
+                    <div style="font-size: 12px; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${v.driverNombre}</div>
+                </div>
+            </div>
+            <div style="background: #eef2f3; padding: 10px; border-radius: 10px; text-align: center; font-size: 13px; margin-bottom: 12px; border-left: 5px solid var(--accent); color: #333;">
+                🚘 <b>Vehículo:</b> ${v.driverMarca || 'N/A'} ${v.driverModelo || 'N/A'} <br>
+                🆔 <b>Placa asignada:</b> <span style="background:var(--accent); color:black; padding:1px 6px; border-radius:4px; font-weight:bold;">${v.driverPlaca || 'N/A'}</span>
+            </div>
+
+            <div id="chat-box"></div>
+            <input id="chat-input" placeholder="Escribe un mensaje de coordinación...">
+            <button class="btn-action" id="btn-send-msg">ENVIAR MENSAJE</button>
+            <button class="btn-action" style="background:var(--danger);margin-top:10px;" id="btn-finalizar-viaje">FINALIZAR VIAJE ACTIVO</button>
+        `;
+
+        document.querySelector(".container").insertBefore(chatUI, document.getElementById('btn-logout'));
+        document.getElementById('btn-send-msg').onclick = () => window.enviarMensaje(id);
+        document.getElementById('btn-finalizar-viaje').onclick = () => window.finalizarViaje(id);
+
+        const mensajesRef = query(collection(db, "viajes", id, "mensajes"), orderBy("timestamp", "asc"));
+        onSnapshot(mensajesRef, (snapshot) => {
+            const box = document.getElementById("chat-box"); if(!box) return; box.innerHTML = "";
+            snapshot.forEach(docSnap => {
+                const data = docSnap.data(); const isMine = data.uid === miUid; const div = document.createElement("div");
+                const fotoAvatar = data.foto || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+
+                div.style.display = "flex"; div.style.flexDirection = isMine ? "row-reverse" : "row";
+                div.style.alignItems = "flex-end"; div.style.gap = "8px";
+                div.innerHTML = `
+                    <img src="${fotoAvatar}" style="width:30px; height:30px; border-radius:50%; object-fit:cover; border:2px solid ${isMine ? 'var(--primary)' : '#ccc'};">
+                    <div style="max-width:75%; padding:10px; border-radius:15px; background:${isMine ? '#2ecc71' : '#ffffff'}; color:${isMine ? 'white' : 'black'}; box-shadow:0 2px 5px rgba(0,0,0,0.1); word-wrap:break-word;">
+                        <b style="font-size:10px; color:${isMine ? '#fff' : '#555'}">${data.user}</b><br>${data.msg}
+                    </div>
+                `;
+                box.appendChild(div);
+            });
+            box.scrollTop = box.scrollHeight;
+        });
+    };
+
+    window.enviarMensaje = async (id) => {
+        const input = document.getElementById("chat-input"); if(!input || !input.value.trim()) return;
+        const txt = input.value.trim(); input.value = "";
+        await addDoc(collection(db, "viajes", id, "mensajes"), {
+            uid: miUid, user: miNombre, foto: miFoto, msg: txt, timestamp: serverTimestamp()
+        });
+    };
+
+    // --- MEJORA: PROCESAMIENTO E INYECCIÓN DE INGRESOS COMPLETO ---
+    window.finalizarViaje = async (id) => {
+        if(confirm("¿Confirmas la finalización y el cierre del viaje?")) {
+            const viajeRef = doc(db, "viajes", id);
+            const viajeSnap = await getDoc(viajeRef);
+            
+            if(viajeSnap.exists()) {
+                const dataViaje = viajeSnap.data();
+                const montoFinal = parseFloat(dataViaje.ofertaActual) || 0;
+                const driverId = dataViaje.driverId;
+
+                // Si el rol es el del conductor que hizo el viaje, guardamos las finanzas
+                if(miRol === 'driver' && driverId === miUid) {
+                    const driverRef = doc(db, "usuarios", miUid);
+                    const driverSnap = await getDoc(driverRef);
+
+                    if(driverSnap.exists()) {
+                        const dataDriver = driverSnap.data();
+                        let ingresosArr = dataDriver.ingresosDiarios || [];
+                        
+                        // Obtenemos fecha local en formato YYYY-MM-DD
+                        const hoy = new Date().toISOString().split('T')[0];
+
+                        // Buscamos si ya existe el día registrado para acumular el valor
+                        const indexDia = ingresosArr.findIndex(i => i.fecha === hoy);
+                        if(indexDia !== -1) {
+                            ingresosArr[indexDia].monto += montoFinal;
+                        } else {
+                            ingresosArr.unshift({ fecha: hoy, monto: montoFinal });
+                        }
+
+                        // Cortamos para asegurar que solo se guarden estrictamente los últimos 5 días
+                        if(ingresosArr.length > 5) {
+                            ingresosArr = ingresosArr.slice(0, 5);
+                        }
+
+                        // Guardamos el arreglo actualizado en el perfil del Driver
+                        await updateDoc(driverRef, { ingresosDiarios: ingresosArr });
+                    }
+                }
+            }
+
+            // Cambiar estado global del viaje
+            await updateDoc(viajeRef, { estado: 'finalizado' });
+            
+            if(document.getElementById('chat-active')) document.getElementById('chat-active').remove();
+            if(miRol === 'cliente') document.getElementById('cliente-view').classList.add('active-section');
+            else document.getElementById('driver-view').classList.add('active-section');
+        }
+    };
 </script>
 </body>
 </html>
