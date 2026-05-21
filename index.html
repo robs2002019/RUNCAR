@@ -5,232 +5,178 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RUN CAR PRO</title>
     
-    <!-- Leaflet CSS para los mapas -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    
-    <!-- intl-tel-input CSS para banderas y código de país -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/18.2.1/css/intlTelInput.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     
     <style>
-        :root {
-            --primary: #2ecc71;
-            --danger: #e74c3c;
-            --bg: #f4f7f6;
-            --text: #333;
-        }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: var(--bg);
-            color: var(--text);
-        }
-        .container {
-            max-width: 500px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        /* Control de Vistas */
-        .app-section { display: none; }
-        .active-section { display: block; animation: fadeIn 0.3s ease-in; }
+        :root { --primary: #2ecc71; --secondary: #1a1a1a; --accent: #f1c40f; --white: #ffffff; --danger: #e74c3c; --chat-bg: #e5ddd5; }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; background: var(--secondary); color: white; padding-bottom: 50px; }
+        .container { max-width: 500px; margin: auto; padding: 15px; }
+        header { text-align: center; padding: 20px; background: rgba(0,0,0,0.3); border-radius: 0 0 25px 25px; border-bottom: 2px solid var(--primary); margin-bottom: 20px; }
+        .card { background: var(--white); color: #333; border-radius: 20px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); margin-bottom: 15px; position: relative; }
+        input, select, textarea { width: 100%; padding: 12px; margin: 5px 0; border: 1px solid #ddd; border-radius: 10px; font-size: 14px; box-sizing: border-box; }
+        .btn-action { width: 100%; padding: 16px; border: none; border-radius: 12px; background: var(--primary); color: white; font-weight: bold; cursor: pointer; transition: 0.3s; margin-top: 5px; }
         
-        /* Tarjetas y Formularios */
-        .card {
-            background: white;
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            margin-bottom: 20px;
-        }
-        input, select {
-            width: 100%; padding: 12px; margin: 8px 0 16px;
-            border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box;
-            font-size: 14px;
-        }
-        
-        /* Ajuste específico para que el input telefónico de banderas encaje en el diseño */
-        .iti { width: 100%; margin: 8px 0 16px; display: block; }
-        .iti input { margin: 0; padding-left: 52px !important; }
+        #map { width: 100%; height: 300px; border-radius: 20px; margin-bottom: 15px; border: 2px solid var(--primary); z-index: 1; }
+        .section { display: none; }
+        .active-section { display: block; }
 
-        .btn-action {
-            width: 100%; padding: 14px; background: var(--primary);
-            color: white; border: none; border-radius: 8px; cursor: pointer;
-            font-weight: bold; font-size: 15px; transition: background 0.2s;
-        }
-        .btn-action:hover { background: #27ae60; }
-        .btn-link {
-            background: none; color: var(--primary); border: none;
-            cursor: pointer; font-size: 14px; width: 100%; padding: 10px;
-        }
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; display: none; align-items: center; justify-content: center; }
+        .modal-content { background: white; color: #333; width: 90%; max-width: 400px; padding: 20px; border-radius: 20px; position: relative;}
+
+        .grid-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .suggestions { background: white; color: black; position: absolute; width: 100%; z-index: 1000; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); max-height: 150px; overflow-y: auto; }
+        .suggestion-item { padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 13px; }
         
-        /* Mapa */
-        #map { height: 350px; width: 100%; border-radius: 12px; margin-bottom: 15px; z-index: 1;}
-        .suggestion-item {
-            padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 13px;
-        }
-        .suggestion-item:hover { background: #f9f9f9; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; color: #333; font-size: 13px; }
+        th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
+        .financial-row { display: flex; justify-content: space-between; margin: 5px 0; font-size: 13px; }
         
-        /* Modal */
-        #modal-negociacion {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.6); align-items: center; justify-content: center; z-index: 9999;
-        }
-        .modal-content {
-            background: white; padding: 20px; border-radius: 16px;
-            width: 90%; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-        }
-        .countdown-timer {
-            text-align: center; font-size: 16px; font-weight: bold;
-            color: var(--danger); margin-bottom: 15px;
-        }
+        #chat-box { height: 250px; overflow-y: auto; background: var(--chat-bg); padding: 10px; border-radius: 10px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 10px; }
+        .file-label { font-size: 12px; display: block; margin-top: 6px; color: #555; font-weight: bold; }
+        .countdown-timer { background: var(--danger); color: white; padding: 5px; text-align: center; border-radius: 8px; font-weight: bold; margin-bottom: 10px; }
         
-        /* Utilidades */
-        .flex-between { display: flex; justify-content: space-between; align-items: center; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .support-contact { text-align: center; font-size: 12px; margin-top: 15px; color: #666; border-top: 1px solid #eee; padding-top: 10px; }
+        .support-contact a { color: var(--primary); font-weight: bold; text-decoration: none; }
     </style>
 </head>
 <body>
 
+<header>
+    <h2 style="margin:0; letter-spacing: 2px;">RUN <span style="color:var(--primary)">CAR</span></h2>
+</header>
+
 <div class="container">
-    <!-- Botón de Cerrar Sesión Global -->
-    <div style="text-align: right; margin-bottom: 10px;">
-        <button id="btn-logout" class="btn-link" style="display:none; width:auto; color:var(--danger);" onclick="cerrarSesion()">Cerrar Sesión</button>
-    </div>
-
-    <!-- ============================================== -->
-    <!-- 1. PANTALLA DE AUTENTICACIÓN / REGISTRO        -->
-    <!-- ============================================== -->
-    <div id="auth-container" class="app-section active-section card">
-        <h2 style="text-align:center; margin-top:0;">RUN CAR</h2>
-        
-        <label>Correo Electrónico</label>
-        <input type="email" id="auth-email" placeholder="tucorreo@email.com">
-        
-        <label>Contraseña</label>
-        <input type="password" id="auth-pass" placeholder="******">
-        
-        <!-- Campos extra para Registro (Ocultos por defecto) -->
-        <div id="reg-fields" style="display:none;">
-            <label>Nombre Completo</label>
-            <input type="text" id="reg-nombre" placeholder="Ej. Juan Pérez">
-            
-            <label>Teléfono</label>
-            <!-- El input de teléfono modificado para la librería intl-tel-input -->
-            <input type="tel" id="reg-tel">
-            
-            <label>Foto de Perfil</label>
-            <input type="file" id="reg-foto-perfil" accept="image/*">
-            
-            <label>¿Qué deseas hacer?</label>
-            <select id="reg-rol">
-                <option value="cliente">Quiero viajar (Cliente)</option>
-                <option value="driver">Quiero conducir (Conductor)</option>
-            </select>
-            
-            <!-- Datos del vehículo (Ocultos por defecto) -->
-            <div id="driver-register-fields" style="display:none; background:#f9f9f9; padding:10px; border-radius:8px;">
-                <h4>Datos de tu Vehículo</h4>
-                <input type="text" id="reg-placa" placeholder="Placa (Ej. P123456)">
-                <input type="text" id="reg-marca" placeholder="Marca (Ej. Toyota)">
-                <input type="text" id="reg-modelo" placeholder="Modelo (Ej. Corolla)">
-                <input type="number" id="reg-anio" placeholder="Año (Ej. 2018)">
-            </div>
-        </div>
-        
-        <button id="btn-auth-main" class="btn-action">INGRESAR</button>
-        <button id="btn-switch-auth" class="btn-link" onclick="switchAuth()">¿No tienes cuenta? Regístrate</button>
-    </div>
-
-    <!-- ============================================== -->
-    <!-- 2. PANTALLA DEL CLIENTE (Pasajero)             -->
-    <!-- ============================================== -->
-    <div id="cliente-view" class="app-section">
+    <!-- AUTENTICACIÓN -->
+    <div id="auth-container" class="section active-section">
         <div class="card">
-            <h3>¿A dónde vamos?</h3>
-            <div class="flex-between">
-                <label>Origen (A):</label>
-                <button class="btn-link" style="width:auto; padding:0;" onclick="usarGPS()">📍 Usar mi GPS</button>
+            <h3 style="text-align:center; margin-top:0;">Acceso</h3>
+            <input type="email" id="auth-email" placeholder="Correo">
+            <input type="password" id="auth-pass" placeholder="Contraseña">
+            
+            <div id="reg-fields" style="display:none;">
+                <input type="text" id="reg-nombre" placeholder="Nombre Completo">
+                
+                <label class="file-label">Foto de Perfil (Obligatorio):</label>
+                <input type="file" id="reg-foto-perfil" accept="image/*">
+
+                <div style="display: flex; gap: 5px; margin-top: 5px;">
+                    <select id="reg-prefijo" style="flex: 1;"><option value="+503">+503</option></select>
+                    <input type="tel" id="reg-tel" placeholder="WhatsApp" style="flex: 2;">
+                </div>
+                <select id="reg-rol">
+                    <option value="cliente">Soy Cliente</option>
+                    <option value="driver">Quiero ser Conductor</option>
+                </select>
+
+                <div id="driver-register-fields" style="display: none; border-top: 1px dashed #ccc; margin-top: 10px; padding-top: 5px;">
+                    <input type="text" id="reg-placa" placeholder="Número de Placa">
+                    <input type="text" id="reg-marca" placeholder="Marca del Vehículo (ej. Toyota)">
+                    <input type="text" id="reg-modelo" placeholder="Modelo del Vehículo (ej. Corolla)">
+                    <input type="number" id="reg-anio" placeholder="Año del Vehículo (Mayor a 2014)">
+                    
+                    <label class="file-label">Foto de Licencia de Conducir:</label>
+                    <input type="file" id="reg-foto-licencia" accept="image/*">
+                    
+                    <label class="file-label">Foto de Tarjeta de Circulación:</label>
+                    <input type="file" id="reg-foto-tarjeta" accept="image/*">
+
+                    <label class="file-label">Foto de solvencia de la Policía:</label>
+                    <input type="file" id="reg-foto-solvencia" accept="image/*">
+
+                    <label class="file-label">Foto de Antecedentes Penales:</label>
+                    <input type="file" id="reg-foto-antecedentes" accept="image/*">
+                    
+                    <label class="file-label">Fotos del Vehículo:</label>
+                    <input type="file" id="reg-foto-vehiculo" accept="image/*">
+                </div>
             </div>
-            <input type="text" id="origin" placeholder="Ej. Metrocentro San Salvador" oninput="buscarDireccion(this, 'sugerencias-origen')">
-            <div id="sugerencias-origen"></div>
             
-            <label>Destino (B):</label>
-            <input type="text" id="destination" placeholder="Ej. Plaza Merliot" oninput="buscarDireccion(this, 'sugerencias-destino')">
-            <div id="sugerencias-destino"></div>
-            
-            <button class="btn-action" style="background:#34495e; margin-bottom:15px;" onclick="calcularRutaOSRM()">Trazar Ruta en Mapa</button>
-            
-            <div id="map"></div>
-            
-            <!-- Resumen de tarifa -->
-            <div id="precio-area" style="display:none; background:#e8f8f5; padding:15px; border-radius:8px; margin-bottom:15px;">
-                <p style="margin:0 0 5px;">Distancia estimada: <b id="distanciaText">0 km</b></p>
-                <p style="margin:0 0 10px;">Tarifa base recomendada: <b id="priceMaps" style="color:var(--primary);">$0.00</b></p>
-                <label><b>Tu oferta final:</b></label>
-                <input type="number" id="oferta-cliente" step="0.5" placeholder="¿Cuánto ofreces?" style="margin-bottom:0; font-size:18px; font-weight:bold;">
-            </div>
-            
-            <button class="btn-action" onclick="publicarViaje()">SOLICITAR VIAJE</button>
+            <button class="btn-action" id="btn-auth-main">INGRESAR</button>
+            <p id="btn-switch-auth" style="text-align:center; cursor:pointer; color:#666;" onclick="switchAuth()">¿No tienes cuenta? Regístrate</p>
         </div>
     </div>
 
-    <!-- ============================================== -->
-    <!-- 3. PANTALLA DEL CONDUCTOR                      -->
-    <!-- ============================================== -->
-    <div id="driver-view" class="app-section">
-        <div class="card" style="background:#2c3e50; color:white;">
-            <h3 style="margin-top:0;">Resumen Financiero</h3>
-            <div class="flex-between" style="font-size:14px; margin-bottom:5px;">
-                <span>Total Bruto:</span> <span id="driver-total-bruto">$0.00</span>
+    <!-- VISTA CLIENTE -->
+    <div id="cliente-view" class="section">
+        <div id="map"></div>
+        <div class="card">
+            <button id="btn-gps" onclick="usarGPS()" style="background:#3498db; margin-bottom:10px;" class="btn-action">📍 USAR MI UBICACIÓN ACTUAL</button>
+            <input id="origin" placeholder="📍 Origen (Dirección o Coordenadas)" oninput="buscarDireccion(this, 'sug-origin')">
+            <div id="sug-origin" class="suggestions"></div>
+            <input id="destination" placeholder="🏁 Destino (Dirección o Coordenadas)" oninput="buscarDireccion(this, 'sug-dest')">
+            <div id="sug-dest" class="suggestions"></div>
+
+            <div class="grid-inputs">
+                <div><label><small>Pers.</small></label><input type="number" id="p-adultos" value="1"></div>
+                <div><label><small>Bebés</small></label><input type="number" id="p-bebes" value="0"></div>
+                <div><label><small>Mascotas</small></label><input type="number" id="p-mascotas" value="0"></div>
+                <div><label><small>Carga (kg)</small></label><input type="number" id="p-carga" value="0"></div>
+                <div style="grid-column: span 2;">
+                    <textarea id="p-notes" placeholder="Notas extras (ej. Maletas grandes, aire acondicionado...)"></textarea>
+                </div>
             </div>
-            <div class="flex-between" style="font-size:14px; margin-bottom:5px; color:#e74c3c;">
-                <span>Comisión App (8%):</span> <span id="driver-comision">-$0.00</span>
+
+            <div id="precio-area" style="display:none; text-align:center; border-top: 1px solid #eee; margin-top:10px; padding-top:10px;">
+                <p>Distancia: <b id="distanciaText">0 km</b> | Sugerido App: <b id="priceMaps">$0.00</b></p>
+                <input type="number" id="oferta-cliente" placeholder="Tu oferta $" style="font-size:18px; text-align:center;">
+                <button class="btn-action" id="btn-publicar-viaje" onclick="publicarViaje()">ENVIAR OFERTA AL CONDUCTOR</button>
             </div>
-            <hr style="border-top:1px solid #34495e;">
-            <div class="flex-between" style="font-size:18px; font-weight:bold; color:#2ecc71;">
-                <span>Ganancia Neta:</span> <span id="driver-total-neto">$0.00</span>
+            <button id="btn-calc" onclick="calcularRutaOSRM()" class="btn-action" style="background:#444;">CALCULAR RUTA</button>
+            
+            <!-- SOPORTE CLIENTE -->
+            <div class="support-contact">
+                Para quejas, consultas o información:<br>
+                <a href="mailto:atencionalclienteruncar@outlook.com">atencionalclienteruncar@outlook.com</a>
             </div>
         </div>
+    </div>
 
+    <!-- VISTA CONDUCTOR -->
+    <div id="driver-view" class="section">
         <div class="card">
-            <h3 style="margin-top:0;">Historial Reciente</h3>
-            <table style="width:100%; text-align:left; font-size:14px; border-collapse:collapse;">
+            <h4 style="margin:0 0 10px 0; color:#333;">Resumen de Ingresos (Últimos 5 Días)</h4>
+            <table id="table-ingresos-dias">
+                <thead>
+                    <tr style="background:#f2f2f2;">
+                        <th>Fecha</th>
+                        <th>Monto Bruto</th>
+                    </tr>
+                </thead>
                 <tbody id="body-ingresos-dias">
-                    <!-- Se llena con JS -->
+                    <!-- Dinámico -->
                 </tbody>
             </table>
+            <hr style="border:0; border-top:1px dashed #ccc; margin:10px 0;">
+            <div class="financial-row"><span>Total Bruto:</span><b id="driver-total-bruto">$0.00</b></div>
+            <div class="financial-row" style="color:var(--danger);"><span>Comisión App (8%):</span><b id="driver-comision">-$0.00</b></div>
+            <div class="financial-row" style="color:var(--primary); font-size:15px; font-weight:bold; border-top:1px solid #eee; padding-top:5px;"><span>Ingreso Neto Pasajero:</span><b id="driver-total-neto">$0.00</b></div>
+            
+            <h4 style="margin:15px 0 0 0; font-size:12px; color:#555; text-align:center;">Link de pago en usd $$: https://link.cubopago.com/JZGDO3DLh_vT</h4>
+            
+            <!-- SOPORTE DRIVER -->
+            <div class="support-contact">
+                Para quejas, consultas o información:<br>
+                <a href="mailto:atencionalclienteruncar@outlook.com">atencionalclienteruncar@outlook.com</a>
+            </div>
         </div>
-
-        <h3 style="color:#555;">Viajes Disponibles</h3>
-        <div id="lista-viajes-global">
-            <!-- Tarjetas de viajes buscando conductor se generan aquí -->
-        </div>
+        <h4 style="color:var(--primary)">Viajes Solicitados</h4>
+        <div id="lista-viajes-global"></div>
     </div>
 
-</div>
-
-<!-- ============================================== -->
-<!-- 4. MODAL GLOBAL DE NEGOCIACIÓN                 -->
-<!-- ============================================== -->
-<div id="modal-negociacion">
-    <div class="modal-content" id="modal-content-body">
-        <!-- El contenido se inyecta dinámicamente vía JavaScript (Cliente o Conductor) -->
+    <!-- VENTANA FLOTANTE (NEGOCIACIÓN) -->
+    <div id="modal-negociacion" class="modal">
+        <div class="modal-content" id="modal-content-body"></div>
     </div>
+
+    <button id="btn-logout" onclick="cerrarSesion()" class="btn-action" style="display:none; background:var(--danger); margin-top:20px;">CERRAR SESIÓN</button>
 </div>
 
-<!-- Scripts de Librerías Externas -->
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/18.2.1/js/intlTelInput.min.js"></script>
-
-<!-- ============================================== -->
-<!-- 5. LÓGICA DE LA APLICACIÓN (FIREBASE + JS)     -->
-<!-- ============================================== -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-app.js";
     import { getFirestore, collection, addDoc, getDocs, query, where, onSnapshot, serverTimestamp, doc, updateDoc, getDoc, orderBy, setDoc } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-auth.js";
 
-    // NOTA DE SEGURIDAD: En producción, asegúrate de restringir esta API Key desde Google Cloud Console
     const firebaseConfig = {
         apiKey: "AIzaSyAyRrBUmw4OEzS7EmvK_XmDk6Z5rrjLC3A",
         authDomain: "runcar-6eda0.firebaseapp.com",
@@ -244,22 +190,12 @@
     const db = getFirestore(app);
     const auth = getAuth(app);
 
-    // --- INICIALIZACIÓN DE INTL-TEL-INPUT ---
-    const phoneInputField = document.querySelector("#reg-tel");
-    const phoneInput = window.intlTelInput(phoneInputField, {
-        initialCountry: "sv", // País por defecto (El Salvador)
-        separateDialCode: true,
-        utilsScript: "https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/18.2.1/js/utils.js",
-    });
-
     let lMap, markerOrigen, markerDestino, polylineRuta;
     let coordsOrigen = null, coordsDestino = null;
     let miRol = "", miUid = "", miNombre = "", miFoto = "", isReg = false;
     let miPlaca = "", miMarca = "", miModelo = "";
     let countdownInterval = null;
-    let ultimoExpiresAt = null; 
 
-    // Ocultar/Mostrar campos del conductor en registro
     document.getElementById('reg-rol').addEventListener('change', function() {
         document.getElementById('driver-register-fields').style.display = this.value === 'driver' ? 'block' : 'none';
     });
@@ -285,13 +221,10 @@
         } else {
             const nombre = document.getElementById('reg-nombre').value;
             const rol = document.getElementById('reg-rol').value;
-            // OBTENER NÚMERO CON CÓDIGO DE PAÍS
-            const tel = phoneInput.getNumber(); 
+            const tel = document.getElementById('reg-tel').value;
             const fotoPerfilFile = document.getElementById('reg-foto-perfil').files[0];
             
             if(!nombre || !fotoPerfilFile) return alert("Nombre y Foto de perfil son obligatorios.");
-            if(!phoneInput.isValidNumber()) return alert("El número de teléfono ingresado no es válido.");
-
             const fotoBase64 = await toBase64(fotoPerfilFile);
 
             let driverData = {};
@@ -355,7 +288,7 @@
 
     window.cerrarSesion = () => signOut(auth);
 
-    // --- FINANZAS (CONDUCTOR) ---
+    // --- FINANZAS ---
     function calcularYRenderizarFinanzas(ingresosDiarios) {
         const tbody = document.getElementById("body-ingresos-dias");
         if(!tbody) return;
@@ -368,14 +301,14 @@
         let totalBruto = 0;
 
         if(ultimosCinco.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="2" style="text-align:center; padding:10px; color:#999;">Sin actividad de viajes registrada</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="2" style="text-align:center; color:#999;">Sin actividad de viajes registrada</td></tr>`;
         } else {
             ultimosCinco.forEach(item => {
                 totalBruto += item.monto;
                 tbody.innerHTML += `
                     <tr>
-                        <td style="padding:8px 0; border-bottom:1px solid #eee;">${formatearFechaElegante(item.fecha)}</td>
-                        <td style="padding:8px 0; border-bottom:1px solid #eee; text-align:right;"><b>$${item.monto.toFixed(2)}</b></td>
+                        <td>${formatearFechaElegante(item.fecha)}</td>
+                        <td><b>$${item.monto.toFixed(2)}</b></td>
                     </tr>
                 `;
             });
@@ -420,8 +353,6 @@
                 const c = [pos.coords.latitude, pos.coords.longitude]; coordsOrigen = c;
                 markerOrigen.setLatLng(c); lMap.flyTo(c, 15); reverseGeocode({lat: c[0], lng: c[1]}, 'origin');
             });
-        } else {
-            alert("Tu navegador no soporta geolocalización.");
         }
     };
 
@@ -454,7 +385,7 @@
     };
 
     window.calcularRutaOSRM = async () => {
-        if(!coordsOrigen || !coordsDestino) return alert("Selecciona origen y destino primero.");
+        if(!coordsOrigen || !coordsDestino) return alert("Selecciona origen y destino");
         try {
             const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${coordsOrigen[1]},${coordsOrigen[0]};${coordsDestino[1]},${coordsDestino[0]}?overview=full&geometries=geojson`);
             const data = await res.json();
@@ -469,14 +400,11 @@
                 document.getElementById("oferta-cliente").value = precio.toFixed(2);
                 document.getElementById("precio-area").style.display = 'block';
             }
-        } catch(e) { alert("Error al calcular la ruta en el mapa."); }
+        } catch(e) { alert("Error al calcular ruta"); }
     };
 
     // --- SINCRO TEMPORIZADOR GLOBAL ---
     function iniciarTemporizador(idViaje, expiresAt, accionTimeout) {
-        if (ultimoExpiresAt === expiresAt) return; 
-        ultimoExpiresAt = expiresAt;
-        
         clearInterval(countdownInterval);
         const actualizar = async () => {
             let tiempoRestante = Math.round((expiresAt - Date.now()) / 1000);
@@ -488,7 +416,6 @@
             if(tiempoRestante <= 0) {
                 clearInterval(countdownInterval);
                 cerrarModal();
-                ultimoExpiresAt = null;
                 if(accionTimeout) await accionTimeout(idViaje);
             }
         };
@@ -496,11 +423,7 @@
         countdownInterval = setInterval(actualizar, 1000);
     }
 
-    window.cerrarModal = () => { 
-        document.getElementById("modal-negociacion").style.display = "none"; 
-        clearInterval(countdownInterval);
-        ultimoExpiresAt = null;
-    };
+    window.cerrarModal = () => { document.getElementById("modal-negociacion").style.display = "none"; };
 
     // --- FLUJO CLIENTE ---
     window.publicarViaje = async () => {
@@ -513,7 +436,7 @@
             origen: document.getElementById("origin").value, destino: document.getElementById("destination").value,
             km: document.getElementById("distanciaText").innerText, precioApp: document.getElementById("priceMaps").innerText,
             ofertaActual: ofertaVal, ofertaDe: "cliente", estado: "buscando", propuestasDrivers: {},
-            expiresAt: Date.now() + 150000, timestamp: serverTimestamp() // 2.5 min para negociar
+            expiresAt: Date.now() + 150000, timestamp: serverTimestamp()
         };
         await addDoc(collection(db, "viajes"), viaje);
     };
@@ -527,14 +450,17 @@
             documentos.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
             const v = documentos[0]; const vId = v.id;
 
+            // Manejo de Cancelado en la vista del Cliente
             if(v.estado === "cancelado" || v.estado === "finalizado") {
                 clearInterval(countdownInterval); cerrarModal();
+                // Si el chat ya no es manejado internamente o se cierra globalmente
+                // Aquí solo nos aseguramos de que no queden ventanas basura si no está el chat.
                 return;
             }
 
             if(v.estado === "accepted") {
                 clearInterval(countdownInterval); cerrarModal();
-                alert(`¡Viaje aceptado por ${v.driverNombre}! Vehículo: ${v.driverMarca} ${v.driverModelo}. Placa: ${v.driverPlaca}`);
+                if(!document.getElementById('chat-active')) window.abrirChat(vId);
                 return;
             }
 
@@ -544,7 +470,7 @@
                 
                 iniciarTemporizador(vId, v.expiresAt, async (id) => {
                     await updateDoc(doc(db, "viajes", id), { estado: 'cancelado' });
-                    alert("Tiempo de negociación agotado. Intenta solicitar de nuevo.");
+                    alert("Tiempo de negociación agotado.");
                 });
 
                 const body = document.getElementById("modal-content-body");
@@ -553,7 +479,7 @@
                 const pendientes = propuestas.filter(p => p.estado === "pendiente");
 
                 if(pendientes.length === 0) {
-                    htmlPropuestas = `<p style='text-align:center;color:#666;'>Esperando ofertas de conductores en tu zona...</p>`;
+                    htmlPropuestas = `<p style='text-align:center;color:#666;'>Esperando ofertas de conductores activos...</p>`;
                 } else {
                     pendientes.forEach(p => {
                         htmlPropuestas += `
@@ -563,7 +489,7 @@
                                     <span style="font-weight:bold; font-size:13px;">${p.driverNombre}</span>
                                 </div>
                                 <p style="margin:4px 0; font-size:11px; color:#555;">🚘 ${p.driverMarca} ${p.driverModelo} (${p.driverPlaca})</p>
-                                <p style="margin:5px 0; font-size:15px; color:var(--primary);"><b>Propone: $${p.monto.toFixed(2)}</b> <small style='color:#666;'>(Oferta ${p.count}/2)</small></p>
+                                <p style="margin:5px 0; font-size:15px; color:var(--primary);"><b>Propone: $${p.monto.toFixed(2)}</b> <small style='color:#666;'>(Contraoferta ${p.count}/2)</small></p>
                                 <div style="display:flex; gap:5px;">
                                     <button class="btn-action" style="padding:8px; font-size:12px;" onclick="responderContraofertaCliente('${vId}', '${p.driverId}', 'aceptar')">ACEPTAR</button>
                                     <button class="btn-action" style="padding:8px; font-size:12px; background:var(--danger);" onclick="responderContraofertaCliente('${vId}', '${p.driverId}', 'rechazar')">RECHAZAR</button>
@@ -574,22 +500,20 @@
                 }
 
                 body.innerHTML = `
-                    <div class="countdown-timer">Buscando conductores... <span class="timer-countdown">0</span>s</div>
-                    <h3 style="margin-top:0; color:#333; text-align:center;">Panel de Ofertas</h3>
-                    <p style="text-align:center; margin:0 0 10px 0; font-size:14px; color:#333;">Tu oferta base: <b style="color:var(--primary); font-size:18px;">$${v.ofertaActual}</b></p>
-                    <hr style="border:0; border-top:1px solid #eee; margin-bottom:10px;">
-                    <div style="max-height: 250px; overflow-y:auto; margin-bottom:10px; padding-right:5px;">${htmlPropuestas}</div>
-                    <button class="btn-action" style="background:#7f8c8d;" onclick="cancelarSolicitudCliente('${vId}')">CANCELAR VIAJE</button>
+                    <div class="countdown-timer">Tiempo Restante: <span class="timer-countdown">0</span>s</div>
+                    <h3 style="margin-top:0;">Panel de Ofertas</h3>
+                    <p style="margin:0 0 10px 0; font-size:14px;">Tu oferta base: <b style="color:var(--primary)">$${v.ofertaActual}</b></p>
+                    <hr style="border:0; border-top:1px solid #eee;">
+                    <div style="max-height: 220px; overflow-y:auto; margin-bottom:10px;">${htmlPropuestas}</div>
+                    <button class="btn-action" style="background:#777;" onclick="cancelarSolicitudCliente('${vId}')">CANCELAR VIAJE</button>
                 `;
             }
         });
     }
 
     window.cancelarSolicitudCliente = async (idViaje) => {
-        if(confirm("¿Deseas cancelar la solicitud de este viaje?")) {
-            clearInterval(countdownInterval); 
-            await updateDoc(doc(db, "viajes", idViaje), { estado: 'cancelado' }); 
-            cerrarModal();
+        if(confirm("¿Deseas cancelar la solicitud de viaje? Se cerrarán todas las ventanas.")) {
+            clearInterval(countdownInterval); await updateDoc(doc(db, "viajes", idViaje), { estado: 'cancelado' }); cerrarModal();
         }
     };
 
@@ -618,91 +542,153 @@
     function escucharViajesDriver() {
         onSnapshot(collection(db, "viajes"), (snap) => {
             const container = document.getElementById("lista-viajes-global"); if(!container) return; container.innerHTML = "";
-            let hayViajes = false;
-            
             snap.forEach(docSnap => {
                 const v = docSnap.data(); const vid = docSnap.id;
                 if(v.estado === "buscando" || v.estado === "negociando") {
-                    hayViajes = true;
                     const card = document.createElement("div"); card.className = "card";
                     card.innerHTML = `
-                        <p style="margin:0 0 5px 0; font-size:13px;"><b>Origen:</b> ${v.origen ? v.origen.substring(0,40) : ''}...</p>
-                        <p style="margin:0 0 5px 0; font-size:13px;"><b>Destino:</b> ${v.destino ? v.destino.substring(0,40) : ''}...</p>
-                        <hr style="border:0; border-top:1px dashed #eee; margin:10px 0;">
-                        <div class="flex-between" style="margin-bottom:10px;">
-                            <span style="font-size:12px; color:#777;">Tarifa recomendada: ${v.precioApp}</span>
-                            <span style="font-size:16px;"><b>Paga:</b> <b style="color:var(--primary)">$${v.ofertaActual}</b></span>
-                        </div>
-                        <button class="btn-action" onclick="abrirNegociacionDriver('${vid}')">VER Y NEGOCIAR</button>
+                        <p style="margin:0 0 5px 0;"><b>Origen:</b> ${v.origen ? v.origen.substring(0,45) : ''}...</p>
+                        <p style="margin:0 0 5px 0;"><b>Destino:</b> ${v.destino ? v.destino.substring(0,45) : ''}...</p>
+                        <p style="margin:5px 0; font-size:13px;">App: ${v.precioApp} | <b style="color:var(--primary)">Oferta Cliente: $${v.ofertaActual}</b></p>
+                        <button class="btn-action" onclick="abrirNegociacionDriver('${vid}')">VER DETALLES / NEGOCIAR</button>
                     `;
                     container.appendChild(card);
                 }
             });
-
-            if(!hayViajes) {
-                container.innerHTML = `<p style="text-align:center; color:#777; padding:20px;">No hay viajes disponibles en este momento. Sigue conectado.</p>`;
-            }
         });
     }
 
-    // --- CONTINUACIÓN DEL CÓDIGO CORTADO ---
     window.abrirNegociacionDriver = async (id) => {
         const docRef = doc(db, "viajes", id); const snapshot = await getDoc(docRef);
         if(!snapshot.exists() || (snapshot.data().estado !== "buscando" && snapshot.data().estado !== "negociando")) {
-            return alert("Este viaje ya fue tomado o cancelado por el cliente.");
+            return alert("El viaje ya no está disponible.");
         }
         
-        let v = snapshot.data(); 
-        const modal = document.getElementById("modal-negociacion"); 
-        const body = document.getElementById("modal-content-body");
-        
-        body.innerHTML = `
-            <div class="countdown-timer">Tiempo restante: <span class="timer-countdown">0</span>s</div>
-            <h3 style="margin-top:0;">Detalles del Viaje</h3>
-            <p><strong>Origen:</strong> ${v.origen}</p>
-            <p><strong>Destino:</strong> ${v.destino}</p>
-            <p><strong>Distancia:</strong> ${v.km}</p>
-            <hr style="border-top:1px solid #eee;">
-            <p style="font-size: 16px;">Oferta del cliente: <b style="color:var(--primary); font-size:20px;">$${v.ofertaActual}</b></p>
-            
-            <label>Tu contraoferta:</label>
-            <input type="number" id="oferta-driver" step="0.5" value="${v.ofertaActual}">
-            
-            <button class="btn-action" onclick="enviarOfertaDriver('${id}')">ENVIAR OFERTA AL CLIENTE</button>
-            <button class="btn-action" style="background:#7f8c8d; margin-top:10px;" onclick="cerrarModal()">CERRAR</button>
-        `;
-        
+        let v = snapshot.data(); const modal = document.getElementById("modal-negociacion"); const body = document.getElementById("modal-content-body");
         modal.style.display = "flex";
-        
-        iniciarTemporizador(id, v.expiresAt, () => {
-            alert("El tiempo de negociación ha expirado para este viaje.");
+
+        iniciarTemporizador(id, v.expiresAt, async () => { cerrarModal(); });
+
+        const renderUIConductor = () => {
+            const miPropuestaInfo = v.propuestasDrivers?.[miUid];
+            if (miPropuestaInfo && miPropuestaInfo.estado === 'rechazado') {
+                body.innerHTML = `
+                    <div class="countdown-timer">Tiempo Restante: <span class="timer-countdown">0</span>s</div>
+                    <h3 style="margin-top:0; color:var(--danger)">Oferta Rechazada</h3>
+                    <p>El cliente rechazó tu oferta.</p>
+                    <button class="btn-action" onclick="cerrarModal()">CERRAR</button>
+                `;
+            } else if (v.estado === 'accepted' && v.driverId === miUid) {
+                cerrarModal();
+                if(!document.getElementById('chat-active')) window.abrirChat(id);
+            } else {
+                body.innerHTML = `
+                    <div class="countdown-timer">Tiempo Restante: <span class="timer-countdown">0</span>s</div>
+                    <h3 style="margin-top:0;">Ofrecer Tarifa</h3>
+                    <p>App: $${v.precioApp} | Oferta Cliente: <b>$${v.ofertaActual}</b></p>
+                    <input type="number" id="oferta-driver-${id}" placeholder="Tu oferta $" value="${v.ofertaActual}">
+                    <button class="btn-action" onclick="enviarOfertaDriver('${id}')">ENVIAR OFERTA</button>
+                    <button class="btn-action" style="background:#777;" onclick="cerrarModal()">CANCELAR</button>
+                `;
+            }
+        };
+
+        const unsubscribe = onSnapshot(docRef, (docSnap) => {
+            if(!docSnap.exists() || docSnap.data().estado === 'cancelado') {
+                unsubscribe(); cerrarModal(); return;
+            }
+            v = docSnap.data();
+            renderUIConductor();
         });
     };
 
-    window.enviarOfertaDriver = async (id) => {
-        const ofertaVal = parseFloat(document.getElementById("oferta-driver").value);
-        if(isNaN(ofertaVal) || ofertaVal <= 0) return alert("Ingresa una oferta válida.");
-        
-        const docRef = doc(db, "viajes", id);
-        
-        // Actualizamos la oferta en la base de datos para este conductor en específico
+    window.enviarOfertaDriver = async (viajeId) => {
+        const oferta = parseFloat(document.getElementById(`oferta-driver-${viajeId}`).value);
+        if(isNaN(oferta) || oferta <= 0) return alert("Ingresa una oferta válida");
+        const docRef = doc(db, "viajes", viajeId);
         await updateDoc(docRef, {
-            estado: 'negociando',
             [`propuestasDrivers.${miUid}`]: {
-                driverId: miUid,
-                driverNombre: miNombre,
-                driverFoto: miFoto,
-                driverPlaca: miPlaca,
-                driverMarca: miMarca,
-                driverModelo: miModelo,
-                monto: ofertaVal,
-                estado: 'pendiente',
-                count: 1 // Aquí puedes llevar el tracking de cuántas ofertas lleva
+                driverId: miUid, driverNombre: miNombre, driverFoto: miFoto,
+                driverPlaca: miPlaca, driverMarca: miMarca, driverModelo: miModelo,
+                monto: oferta, estado: 'pendiente', count: 1
+            },
+            estado: 'negociando'
+        });
+    };
+
+    // --- CHAT Y CANCELACIÓN EN CURSO ---
+    window.abrirChat = (viajeId) => {
+        // Ocultar las otras secciones temporalmente
+        document.getElementById('cliente-view').classList.remove('active-section');
+        document.getElementById('driver-view').classList.remove('active-section');
+
+        const chatContainer = document.createElement("div");
+        chatContainer.id = "chat-active";
+        chatContainer.className = "section active-section card";
+        chatContainer.innerHTML = `
+            <h3 style="margin-top:0;">Viaje en Curso</h3>
+            <div id="chat-box"></div>
+            <div style="display:flex; gap:5px;">
+                <input type="text" id="chat-input" placeholder="Escribe un mensaje..." style="flex:1;">
+                <button class="btn-action" style="width:auto; padding:12px;" onclick="enviarMensaje('${viajeId}')">ENVIAR</button>
+            </div>
+            <button class="btn-action" style="background:var(--danger); margin-top:15px;" onclick="cancelarViajeChat('${viajeId}')">CANCELAR VIAJE</button>
+        `;
+        document.querySelector('.container').insertBefore(chatContainer, document.getElementById('btn-logout'));
+
+        // Cargar y escuchar mensajes
+        const chatRef = collection(db, "viajes", viajeId, "chat");
+        const qChat = query(chatRef, orderBy("timestamp", "asc"));
+        window.chatUnsubscribe = onSnapshot(qChat, (snap) => {
+            const box = document.getElementById("chat-box");
+            if(!box) return;
+            box.innerHTML = "";
+            snap.forEach(msgDoc => {
+                const msg = msgDoc.data();
+                const isMe = msg.senderId === miUid;
+                box.innerHTML += `<div style="text-align:${isMe ? 'right' : 'left'}; margin-bottom:5px;">
+                    <span style="background:${isMe ? 'var(--primary)' : '#ccc'}; color:${isMe ? 'white' : 'black'}; padding:5px 10px; border-radius:10px; display:inline-block; font-size:13px;">
+                        ${msg.text}
+                    </span>
+                </div>`;
+            });
+            box.scrollTop = box.scrollHeight;
+        });
+
+        // Escuchar el estado del viaje (Si se cancela, avisar y cerrar chat)
+        window.viajeStatusUnsubscribe = onSnapshot(doc(db, "viajes", viajeId), (docSnap) => {
+            if(docSnap.exists()) {
+                const data = docSnap.data();
+                if(data.estado === 'cancelado') {
+                    alert("El viaje ha Sido cancelado");
+                    if(window.chatUnsubscribe) window.chatUnsubscribe();
+                    if(window.viajeStatusUnsubscribe) window.viajeStatusUnsubscribe();
+                    
+                    const activeChat = document.getElementById('chat-active');
+                    if (activeChat) activeChat.remove();
+
+                    // Regresar a la vista correspondiente
+                    document.getElementById(miRol === 'cliente' ? 'cliente-view' : 'driver-view').classList.add('active-section');
+                }
             }
         });
-        
-        alert("¡Tu oferta ha sido enviada al cliente!");
-        cerrarModal();
+    };
+
+    window.enviarMensaje = async (viajeId) => {
+        const input = document.getElementById("chat-input");
+        if(!input.value.trim()) return;
+        await addDoc(collection(db, "viajes", viajeId, "chat"), {
+            text: input.value.trim(),
+            senderId: miUid,
+            timestamp: serverTimestamp()
+        });
+        input.value = "";
+    };
+
+    window.cancelarViajeChat = async (viajeId) => {
+        if(confirm("¿Seguro que deseas cancelar este viaje?")) {
+            await updateDoc(doc(db, "viajes", viajeId), { estado: 'cancelado' });
+        }
     };
 
 </script>
