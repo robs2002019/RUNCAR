@@ -752,6 +752,22 @@
             uid: miUid, user: miNombre, foto: miFoto, msg: txt, timestamp: serverTimestamp()
         });
     };
+    window.cancelarViaje = async (id) => {
+    console.log("Iniciando cancelación del viaje:", id); // <--- DEBUG: Revisa esto en F12
+    
+    if(confirm("¿Estás seguro de cancelar este viaje? No genera ingresos.")) {
+        try {
+            // Actualizamos el documento en Firebase
+            await updateDoc(doc(db, "viajes", id), { 
+                estado: 'cancelado' 
+            });
+            console.log("¡Cancelado exitosamente en Firebase!");
+        } catch (error) {
+            console.error("Error al cancelar:", error);
+            alert("Error al contactar con el servidor: " + error.message);
+        }
+    }
+};
 
     // --- MEJORA: PROCESAMIENTO E INYECCIÓN DE INGRESOS COMPLETO ---
     window.finalizarViaje = async (id) => {
