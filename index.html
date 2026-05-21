@@ -674,72 +674,77 @@
         }
     };
 
-    // --- VENTANA DE CHAT EN TIEMPO REAL ---
     window.abrirChat = async (id) => {
-        cerrarModal();
-        if(document.getElementById('chat-active')) document.getElementById('chat-active').remove();
+    cerrarModal();
+    if(document.getElementById('chat-active')) document.getElementById('chat-active').remove();
 
-        document.getElementById('driver-view').classList.remove('active-section');
-        document.getElementById('cliente-view').classList.remove('active-section');
+    document.getElementById('driver-view').classList.remove('active-section');
+    document.getElementById('cliente-view').classList.remove('active-section');
 
-        const viajeSnap = await getDoc(doc(db, "viajes", id)); if(!viajeSnap.exists()) return;
-        const v = viajeSnap.data();
+    const viajeSnap = await getDoc(doc(db, "viajes", id)); 
+    if(!viajeSnap.exists()) return;
+    const v = viajeSnap.data();
 
-        const chatUI = document.createElement("div"); chatUI.className = "card active-section"; chatUI.id = "chat-active";
-        chatUI.innerHTML = `
-            <div style="background:orange;padding:8px;border-radius:10px;margin-bottom:10px;font-size:11px;color:black;font-weight:bold;text-align:center;">
-                ⚠️ VIAJE EN CURSO - CONEXIÓN CON ENCRIPTACIÓN DIRECTA
+    const chatUI = document.createElement("div"); 
+    chatUI.className = "card active-section"; 
+    chatUI.id = "chat-active";
+    chatUI.innerHTML = `
+        <div style="background:orange;padding:8px;border-radius:10px;margin-bottom:10px;font-size:11px;color:black;font-weight:bold;text-align:center;">
+            ⚠️ VIAJE EN CURSO - CONEXIÓN CON ENCRIPTACIÓN DIRECTA
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; background: #f7f9fa; padding: 12px; border-radius: 15px; border: 1px solid var(--primary); color: #333; margin-bottom: 8px;">
+            <div style="text-align: center; flex: 1; min-width: 0;">
+                <img src="${v.clienteFoto || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary);">
+                <div style="font-size: 10px; color: #777; margin-top:2px;">Cliente</div>
+                <div style="font-size: 12px; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${v.clienteNombre}</div>
             </div>
-            
-            <div style="display: flex; justify-content: space-between; align-items: center; background: #f7f9fa; padding: 12px; border-radius: 15px; border: 1px solid var(--primary); color: #333; margin-bottom: 8px;">
-                <div style="text-align: center; flex: 1; min-width: 0;">
-                    <img src="${v.clienteFoto || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary);">
-                    <div style="font-size: 10px; color: #777; margin-top:2px;">Cliente</div>
-                    <div style="font-size: 12px; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${v.clienteNombre}</div>
-                </div>
-                <div style="font-size: 20px; color: var(--primary); font-weight: bold; padding: 0 10px;">⚡</div>
-                <div style="text-align: center; flex: 1; min-width: 0;">
-                    <img src="${v.driverFoto || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary);">
-                    <div style="font-size: 10px; color: #777; margin-top:2px;">Conductor</div>
-                    <div style="font-size: 12px; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${v.driverNombre}</div>
-                </div>
+            <div style="font-size: 20px; color: var(--primary); font-weight: bold; padding: 0 10px;">⚡</div>
+            <div style="text-align: center; flex: 1; min-width: 0;">
+                <img src="${v.driverFoto || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary);">
+                <div style="font-size: 10px; color: #777; margin-top:2px;">Conductor</div>
+                <div style="font-size: 12px; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${v.driverNombre}</div>
             </div>
-            <div style="background: #eef2f3; padding: 10px; border-radius: 10px; text-align: center; font-size: 13px; margin-bottom: 12px; border-left: 5px solid var(--accent); color: #333;">
-                🚘 <b>Vehículo:</b> ${v.driverMarca || 'N/A'} ${v.driverModelo || 'N/A'} <br>
-                🆔 <b>Placa asignada:</b> <span style="background:var(--accent); color:black; padding:1px 6px; border-radius:4px; font-weight:bold;">${v.driverPlaca || 'N/A'}</span>
-            </div>
+        </div>
+        <div id="chat-box"></div>
+        <input id="chat-input" placeholder="Escribe un mensaje...">
+        <button class="btn-action" id="btn-send-msg">ENVIAR MENSAJE</button>
+        <button class="btn-action" style="background:var(--primary);margin-top:10px;" id="btn-finalizar-viaje">FINALIZAR VIAJE</button>
+        <button class="btn-action" style="background:var(--danger);margin-top:10px;" id="btn-cancelar-viaje">CANCELAR VIAJE</button>
+    `;
 
-            <div id="chat-box"></div>
-            <input id="chat-input" placeholder="Escribe un mensaje de coordinación...">
-            <button class="btn-action" id="btn-send-msg">ENVIAR MENSAJE</button>
-            <button class="btn-action" style="background:var(--danger);margin-top:10px;" id="btn-finalizar-viaje">FINALIZAR VIAJE ACTIVO</button>
-        `;
+    document.querySelector(".container").insertBefore(chatUI, document.getElementById('btn-logout'));
+    
+    // Asignación de botones
+    document.getElementById('btn-send-msg').onclick = () => window.enviarMensaje(id);
+    document.getElementById('btn-finalizar-viaje').onclick = () => window.finalizarViaje(id);
+    document.getElementById('btn-cancelar-viaje').onclick = () => window.cancelarViaje(id);
 
-        document.querySelector(".container").insertBefore(chatUI, document.getElementById('btn-logout'));
-        document.getElementById('btn-send-msg').onclick = () => window.enviarMensaje(id);
-        document.getElementById('btn-finalizar-viaje').onclick = () => window.finalizarViaje(id);
-
-        const mensajesRef = query(collection(db, "viajes", id, "mensajes"), orderBy("timestamp", "asc"));
-        onSnapshot(mensajesRef, (snapshot) => {
-            const box = document.getElementById("chat-box"); if(!box) return; box.innerHTML = "";
-            snapshot.forEach(docSnap => {
-                const data = docSnap.data(); const isMine = data.uid === miUid; const div = document.createElement("div");
-                const fotoAvatar = data.foto || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
-
-                div.style.display = "flex"; div.style.flexDirection = isMine ? "row-reverse" : "row";
-                div.style.alignItems = "flex-end"; div.style.gap = "8px";
-                div.innerHTML = `
-                    <img src="${fotoAvatar}" style="width:30px; height:30px; border-radius:50%; object-fit:cover; border:2px solid ${isMine ? 'var(--primary)' : '#ccc'};">
-                    <div style="max-width:75%; padding:10px; border-radius:15px; background:${isMine ? '#2ecc71' : '#ffffff'}; color:${isMine ? 'white' : 'black'}; box-shadow:0 2px 5px rgba(0,0,0,0.1); word-wrap:break-word;">
-                        <b style="font-size:10px; color:${isMine ? '#fff' : '#555'}">${data.user}</b><br>${data.msg}
-                    </div>
-                `;
-                box.appendChild(div);
-            });
-            box.scrollTop = box.scrollHeight;
+    // Escucha mensajes
+    const mensajesRef = query(collection(db, "viajes", id, "mensajes"), orderBy("timestamp", "asc"));
+    onSnapshot(mensajesRef, (snapshot) => {
+        const box = document.getElementById("chat-box"); 
+        if(!box) return; box.innerHTML = "";
+        snapshot.forEach(docSnap => {
+            const data = docSnap.data(); const isMine = data.uid === miUid;
+            const div = document.createElement("div");
+            div.style.display = "flex"; div.style.flexDirection = isMine ? "row-reverse" : "row";
+            div.style.gap = "8px"; div.style.marginBottom = "5px";
+            div.innerHTML = `<div style="padding:8px; border-radius:10px; background:${isMine ? '#2ecc71' : '#fff'}; color:${isMine ? '#fff' : '#000'}; font-size:13px;">${data.msg}</div>`;
+            box.appendChild(div);
         });
-    };
+        box.scrollTop = box.scrollHeight;
+    });
 
+    // ESCUCHA PARA CIERRE AUTOMÁTICO POR CANCELACIÓN
+    onSnapshot(doc(db, "viajes", id), (docSnap) => {
+        if(docSnap.exists() && docSnap.data().estado === 'cancelado') {
+            alert("⚠️ El viaje ha sido cancelado.");
+            if(document.getElementById('chat-active')) document.getElementById('chat-active').remove();
+            if(miRol === 'cliente') document.getElementById('cliente-view').classList.add('active-section');
+            else document.getElementById('driver-view').classList.add('active-section');
+        }
+    });
+};
     window.enviarMensaje = async (id) => {
         const input = document.getElementById("chat-input"); if(!input || !input.value.trim()) return;
         const txt = input.value.trim(); input.value = "";
