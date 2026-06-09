@@ -431,7 +431,7 @@ VER MAPA EN TIEMPO REAL
 </div>
 </div>
 <div class="card">
-<div class="card-title">MIS GANANCIAS (5 DIAS)</div>
+<div class="card-title">MIS GANANCIAS (8 DIAS)</div>
 <div id="driverMonedaBadge" style="display:none;align-items:center;gap:8px;padding:6px 12px;background:rgba(41,121,255,.12);border:1px solid var(--blue);border-radius:20px;margin-bottom:10px;flex-wrap:wrap;"></div>
 <div id="gananciasBox"></div>
 <div style="margin-top:10px;background:var(--card2);border-radius:10px;padding:12px;">
@@ -2321,7 +2321,7 @@ docs.forEach(d=>{
   total+=Number(g.monto||0);
   signoPredominante=S; // usar el último signo encontrado
 });
-Object.entries(dias).slice(0,5).forEach(([f,m])=>{
+Object.entries(dias).slice(0,8).forEach(([f,m])=>{
   const S=diaSigno[f]||driverMonedaSigno||"$";
   const c=m*0.08;
   box.innerHTML+=`<div style='display:flex;justify-content:space-between;align-items:center;padding:8px;background:var(--card2);border-radius:8px;margin-bottom:6px;'><div><div style='font-size:13px;font-weight:700;'>${esc(f)}</div><div style='font-size:11px;color:var(--sub);'>Comision: <span style='color:var(--red);'>-${S}${esc(c.toFixed(2))}</span></div></div><div style='font-family:Rajdhani,sans-serif;font-size:18px;color:var(--g);font-weight:700;'>${S}${esc(m.toFixed(2))}</div></div>`;
