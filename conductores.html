@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RUNCAR Bolivia — Conductores | 1 mes gratis</title>
+<meta name="description" content="RUNCAR llega a Bolivia. Solo automóviles. Registrate gratis con Gmail y obtené tu primer mes sin comisión más saldo de bienvenida.">
+<meta property="og:title" content="RUNCAR Bolivia — Conductores">
+<meta property="og:description" content="1 mes gratis + saldo de bienvenida para los primeros conductores en Bolivia.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Sora:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --void:#04050d; --panel:#0a1230; --panel-line:rgba(0,231,255,.18);
+  --cyan:#00e7ff; --blue:#3b6bff; --ink:#eaf3ff; --ink-dim:#7e90b8; --muted-red:#ff6f6f;
+  --radius:14px;
+}
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{margin:0;background:var(--void);color:var(--ink);font-family:'Sora',system-ui,sans-serif;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden;}
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(0,231,255,.05) 0 1px, transparent 1px 64px),
+    repeating-linear-gradient(90deg, rgba(0,231,255,.05) 0 1px, transparent 1px 64px);
+  mask-image:radial-gradient(ellipse 90% 60% at 50% 0%, rgba(0,0,0,.9), transparent 70%);
+  pointer-events:none;z-index:0;
+}
+.progress{position:fixed;top:0;left:0;height:3px;width:0%;background:linear-gradient(90deg,var(--cyan),var(--blue));box-shadow:0 0 12px var(--cyan);z-index:50;}
+header{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:20px clamp(20px,6vw,48px);}
+.logo{font-family:'Orbitron',sans-serif;font-weight:800;font-size:1.1rem;letter-spacing:.06em;background:linear-gradient(90deg,var(--cyan),var(--blue));-webkit-background-clip:text;background-clip:text;color:transparent;}
+.badge{font-family:'JetBrains Mono',monospace;font-size:.7rem;letter-spacing:.12em;color:var(--ink-dim);border:1px solid var(--panel-line);padding:4px 10px;border-radius:999px;}
+main{position:relative;z-index:2;max-width:640px;margin:0 auto;padding:0 clamp(20px,6vw,32px) 140px;}
+section{padding:56px 0;position:relative;}
+section:not(:last-child)::after{content:'';position:absolute;left:4px;bottom:-1px;width:1px;height:56px;background:linear-gradient(180deg,var(--panel-line),transparent);}
+.waypoint{display:flex;align-items:center;gap:10px;margin-bottom:18px;}
+.waypoint .dot{width:10px;height:10px;border-radius:50%;border:2px solid var(--panel-line);transition:all .4s;flex-shrink:0;}
+.waypoint.active .dot{background:var(--cyan);border-color:var(--cyan);box-shadow:0 0 10px var(--cyan);}
+.waypoint span.lbl{font-family:'JetBrains Mono',monospace;font-size:.72rem;letter-spacing:.14em;color:var(--ink-dim);text-transform:uppercase;transition:color .4s;}
+.waypoint.active span.lbl{color:var(--cyan);}
+.eyebrow{font-family:'JetBrains Mono',monospace;font-size:.75rem;letter-spacing:.18em;color:var(--cyan);text-transform:uppercase;margin:0 0 14px;}
+h1{font-family:'Orbitron',sans-serif;font-weight:800;font-size:clamp(2.1rem,8vw,3.2rem);line-height:1.08;margin:0 0 18px;}
+h2{font-family:'Orbitron',sans-serif;font-weight:700;font-size:clamp(1.5rem,5vw,2rem);margin:0 0 16px;}
+p{color:var(--ink-dim);margin:0 0 18px;font-size:1.02rem;}
+.lede{color:var(--ink);font-size:1.08rem;}
+.pillrow{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:28px;}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:999px;font-size:.85rem;font-weight:600;}
+.pill.yes{background:rgba(0,231,255,.08);border:1px solid rgba(0,231,255,.4);color:var(--cyan);}
+.pill.no{background:rgba(255,111,111,.06);border:1px solid rgba(255,111,111,.3);color:var(--muted-red);}
+.btn{display:inline-flex;align-items:center;gap:8px;font-family:'Sora',sans-serif;font-weight:700;font-size:1rem;padding:16px 26px;border-radius:12px;text-decoration:none;background:linear-gradient(90deg,var(--cyan),var(--blue));color:#021019;box-shadow:0 0 0 1px rgba(0,231,255,.5),0 10px 30px -8px rgba(0,231,255,.5);transition:transform .15s,box-shadow .15s;}
+.btn:hover{transform:translateY(-2px);}
+.btn:focus-visible{outline:2px solid var(--cyan);outline-offset:3px;}
+.btn-caption{display:block;margin-top:10px;font-size:.8rem;color:var(--ink-dim);}
+.card{background:var(--panel);border:1px solid var(--panel-line);border-radius:var(--radius);padding:28px;position:relative;overflow:hidden;}
+.card::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 30% -10%, rgba(0,231,255,.12), transparent 60%);}
+.dates{font-family:'JetBrains Mono',monospace;color:var(--ink);font-size:.95rem;margin-bottom:20px;position:relative;z-index:1;}
+.countdown{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;position:relative;z-index:1;}
+.countdown .num{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:clamp(1.4rem,5vw,2rem);color:var(--cyan);text-align:center;}
+.countdown .lbl2{font-size:.65rem;letter-spacing:.1em;color:var(--ink-dim);text-transform:uppercase;text-align:center;}
+.countfoot{font-size:.85rem;color:var(--ink-dim);position:relative;z-index:1;margin:0;}
+.balance{position:relative;z-index:1;}
+.amt{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:clamp(2.2rem,9vw,3rem);color:var(--cyan);}
+.amt2{font-family:'JetBrains Mono',monospace;font-size:1.1rem;color:var(--ink-dim);margin-top:4px;}
+.list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:16px;}
+.list li{display:flex;gap:12px;align-items:flex-start;color:var(--ink);}
+.check{flex:0 0 22px;width:22px;height:22px;border-radius:50%;border:1px solid var(--cyan);display:flex;align-items:center;justify-content:center;color:var(--cyan);font-size:.8rem;margin-top:2px;}
+footer{position:relative;z-index:2;text-align:center;padding:48px 24px 32px;border-top:1px solid var(--panel-line);}
+footer .logo{margin:0 auto 10px;}
+.fine{font-size:.75rem;color:var(--ink-dim);margin-top:16px;}
+.tagline{font-family:'Orbitron',sans-serif;font-size:.85rem;letter-spacing:.06em;color:var(--ink-dim);margin:0;}
+.sticky-cta{position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 18px;background:rgba(5,7,18,.85);backdrop-filter:blur(10px);border-top:1px solid var(--panel-line);transform:translateY(110%);transition:transform .3s;}
+.sticky-cta.show{transform:translateY(0);}
+.sticky-cta p{margin:0;font-size:.8rem;color:var(--ink);}
+.sticky-cta .btn{padding:10px 18px;font-size:.85rem;}
+@media (prefers-reduced-motion: reduce){*{transition:none !important;animation:none !important;}html{scroll-behavior:auto;}}
+</style>
+</head>
+<body>
+<div class="progress"></div>
+<header>
+  <div class="logo">RUNCAR</div>
+  <div class="badge">BOLIVIA</div>
+</header>
+
+<main>
+  <section id="hero">
+    <p class="eyebrow">RUNCAR BOLIVIA · LANZAMIENTO</p>
+    <h1>¿Cansado de pagar comisiones?</h1>
+    <p class="lede">RUNCAR llega a Bolivia con un trato distinto para los conductores.</p>
+    <div class="pillrow">
+      <span class="pill yes">✓ Automóviles</span>
+      <span class="pill no">✕ Motocicletas</span>
+    </div>
+    <a class="btn cta-link" href="https://www.runcar.app/">Registrarme gratis con Gmail</a>
+    <span class="btn-caption">Sin tarjeta. Sin contratos. Cancelás cuando quieras.</span>
+  </section>
+
+  <section id="promo">
+    <div class="waypoint"><span class="dot"></span><span class="lbl">Parada 1 · La oferta</span></div>
+    <h2>Promoción de lanzamiento</h2>
+    <div class="card">
+      <p class="dates">18 de junio — 18 de julio de 2026</p>
+      <div class="countdown">
+        <div><div class="num" id="cd-d">00</div><div class="lbl2">Días</div></div>
+        <div><div class="num" id="cd-h">00</div><div class="lbl2">Horas</div></div>
+        <div><div class="num" id="cd-m">00</div><div class="lbl2">Min</div></div>
+        <div><div class="num" id="cd-s">00</div><div class="lbl2">Seg</div></div>
+      </div>
+      <p class="countfoot">para que termine la promoción</p>
+    </div>
+    <p style="margin-top:20px;">1 mes gratis para los conductores que se registren durante el lanzamiento.</p>
+  </section>
+
+  <section id="saldo">
+    <div class="waypoint"><span class="dot"></span><span class="lbl">Parada 2 · El saldo</span></div>
+    <h2>Saldo promocional de lanzamiento</h2>
+    <div class="card balance">
+      <div class="amt">Bs 17,250</div>
+      <div class="amt2">≈ USD $2,500</div>
+    </div>
+    <p style="margin-top:20px;">Saldo de bienvenida para los primeros conductores que se registren en Bolivia.</p>
+  </section>
+
+  <section id="valor">
+    <div class="waypoint"><span class="dot"></span><span class="lbl">Parada 3 · Por qué RUNCAR</span></div>
+    <h2>Más que una app de viajes</h2>
+    <ul class="list">
+      <li><span class="check">✓</span><span>0% de comisión durante tu primer mes</span></li>
+      <li><span class="check">✓</span><span>Vos proponés tu tarifa, no un algoritmo</span></li>
+      <li><span class="check">✓</span><span>Pagos directos, sin intermediarios</span></li>
+    </ul>
+  </section>
+
+  <section id="cta">
+    <div class="waypoint"><span class="dot"></span><span class="lbl">Llegada · Registrate</span></div>
+    <h2>Tu viaje empieza acá</h2>
+    <p class="lede">Registrate gratis con tu cuenta de Gmail y empezá a recibir viajes en minutos.</p>
+    <a class="btn cta-link" href="https://www.runcar.app/">Registrarme gratis con Gmail</a>
+    <p class="fine">Promoción válida del 18 de junio al 18 de julio de 2026 en Bolivia. Aplican términos y condiciones.</p>
+  </section>
+</main>
+
+<footer>
+  <div class="logo">RUNCAR</div>
+  <p class="tagline">Tu viaje. Tu precio. Tu libertad.</p>
+  <p class="fine">www.runcar.app</p>
+</footer>
+
+<div class="sticky-cta">
+  <p>1 mes gratis para conductores</p>
+  <a class="btn cta-link" href="https://www.runcar.app/">Registrarme →</a>
+</div>
+
+<script>
+// Barra de progreso de scroll
+const bar = document.querySelector('.progress');
+function updateProgress(){
+  const h = document.documentElement;
+  const max = h.scrollHeight - h.clientHeight;
+  bar.style.width = max > 0 ? (h.scrollTop / max * 100) + '%' : '0%';
+}
+let ticking = false;
+window.addEventListener('scroll', () => {
+  if(!ticking){ requestAnimationFrame(() => { updateProgress(); ticking = false; }); ticking = true; }
+}, {passive:true});
+updateProgress();
+
+// Waypoints (paradas) que se iluminan al hacer scroll
+const waypoints = document.querySelectorAll('.waypoint');
+const wpObserver = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('active'); });
+}, {threshold:0.4});
+waypoints.forEach(w => wpObserver.observe(w));
+
+// Cuenta regresiva hasta el fin de la promo (18 de julio de 2026, Bolivia UTC-4)
+const promoEnd = new Date('2026-07-18T23:59:59-04:00').getTime();
+function tickCountdown(){
+  let diff = Math.max(0, promoEnd - Date.now());
+  const d = Math.floor(diff / 86400000); diff -= d * 86400000;
+  const hh = Math.floor(diff / 3600000); diff -= hh * 3600000;
+  const mm = Math.floor(diff / 60000); diff -= mm * 60000;
+  const ss = Math.floor(diff / 1000);
+  document.getElementById('cd-d').textContent = String(d).padStart(2,'0');
+  document.getElementById('cd-h').textContent = String(hh).padStart(2,'0');
+  document.getElementById('cd-m').textContent = String(mm).padStart(2,'0');
+  document.getElementById('cd-s').textContent = String(ss).padStart(2,'0');
+}
+tickCountdown();
+setInterval(tickCountdown, 1000);
+
+// Barra inferior fija una vez que se pasa el hero
+const hero = document.getElementById('hero');
+const sticky = document.querySelector('.sticky-cta');
+const heroObserver = new IntersectionObserver((entries) => {
+  entries.forEach(e => { sticky.classList.toggle('show', e.boundingClientRect.top < 0); });
+}, {threshold:0});
+heroObserver.observe(hero);
+
+// Reenvía utm_source / utm_medium / utm_campaign (y cualquier otro parámetro) al link de registro,
+// para no perder la atribución de la campaña al pasar de la landing a la app principal.
+const qs = window.location.search;
+if (qs) {
+  document.querySelectorAll('a.cta-link').forEach(a => {
+    try {
+      const url = new URL(a.getAttribute('href'), window.location.href);
+      new URLSearchParams(qs).forEach((v,k) => url.searchParams.set(k,v));
+      a.setAttribute('href', url.toString());
+    } catch(e) {}
+  });
+}
+</script>
+</body>
+</html>
