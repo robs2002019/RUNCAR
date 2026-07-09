@@ -2,8 +2,8 @@ const CACHE_NAME = "runcar-cache-v1";
 const APP_SHELL = [
   "./index.html",
   "./manifest.json",
-  "./icons/icon-192.png",
-  "./icons/icon-512.png"
+  "./icon/icon-192.png",
+  "./icon/icon-512.png"
 ];
 
 // Instalación: precachear el shell básico de la app
