@@ -15,7 +15,12 @@
   "related_applications": [
     {
       "platform": "play",
-      "id": "com.runcar.app"
+      "related_applications": [
+  {
+    "platform": "play",
+    "id": "app.runcar.www.twa"
+  }
+],
     }
   ],
   "icons": [
