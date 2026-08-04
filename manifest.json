@@ -25,12 +25,11 @@
     { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "screenshots": [
-    {
-      "src": "screenshot-mobile-1.png",
-      "sizes": "1080x1920",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Pantalla principal de RUN CAR"
-    }
-  ]
-}
+  {
+    "src": "screenshot-mobile-1.png",
+    "sizes": "1602x1058",
+    "type": "image/png",
+    "form_factor": "wide",
+    "label": "Pantalla principal de RUN CAR"
+  }
+]
