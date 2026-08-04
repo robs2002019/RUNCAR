@@ -1,4 +1,4 @@
-const CACHE_NAME = "runcar-cache-v4";
+const CACHE_NAME = "runcar-cache-v5";
 const APP_SHELL = [
   "./index.html",
   "./manifest.json",
